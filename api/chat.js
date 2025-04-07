@@ -1,9 +1,7 @@
-const { Configuration, OpenAIApi } = require("openai");
-
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+const OpenAI = require('openai');
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 module.exports = async (req, res) => {
   // Set CORS headers
@@ -33,7 +31,7 @@ module.exports = async (req, res) => {
   try {
     console.log("Message received:", message);
     console.log("Client ID:", client_id);
-    const completion = await openai.createChatCompletion({
+    const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: systemPrompt },
@@ -41,7 +39,7 @@ module.exports = async (req, res) => {
       ],
     });
 
-    const reply = completion.data.choices[0].message.content;
+    const reply = completion.choices[0].message.content;
     res.status(200).json({ reply });
   } catch (error) {
     console.error("OpenAI API error:", error);
