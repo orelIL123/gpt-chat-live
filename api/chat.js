@@ -1,4 +1,3 @@
-
 const { Configuration, OpenAIApi } = require("openai");
 
 const configuration = new Configuration({
@@ -32,6 +31,8 @@ module.exports = async (req, res) => {
   const systemPrompt = brains[client_id] || brains["default"];
 
   try {
+    console.log("Message received:", message);
+    console.log("Client ID:", client_id);
     const completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [
