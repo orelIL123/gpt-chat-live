@@ -1,6 +1,6 @@
 
 document.addEventListener("DOMContentLoaded", function () {
-  const API_URL = "/api/chat";
+  const API_URL = "https://gpt-chat-live-git-master-orelil123s-projects.vercel.app/api/chat";
   const client_id = "shira_tours";
 
   const chatButton = document.createElement("div");
