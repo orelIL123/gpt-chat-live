@@ -1,15 +1,29 @@
-const OpenAI = require('openai');
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+// api/chat.js
+
+const { Configuration, OpenAIApi } = require("openai");
+const admin = require("firebase-admin");
+
+// Initialize Firebase Admin SDK only once
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+const db = admin.firestore();
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
 
 module.exports = async (req, res) => {
-  // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle OPTIONS preflight request
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
@@ -20,29 +34,26 @@ module.exports = async (req, res) => {
   }
 
   const { message, client_id } = req.body;
-
-  const brains = {
-    "shira_tours": "אתה עוזר אישי בסוכנות תיירות. ענה בעברית ונסה להציע טיולים ליוון, תאילנד ואיטליה.",
-    "default": "אתה עוזר כללי ועונה בצורה נעימה בעברית."
-  };
-
-  const systemPrompt = brains[client_id] || brains["default"];
+  if (!message || !client_id) {
+    return res.status(400).json({ error: "Missing message or client_id" });
+  }
 
   try {
-    console.log("Message received:", message);
-    console.log("Client ID:", client_id);
-    const completion = await openai.chat.completions.create({
+    const doc = await db.collection("brains").doc(client_id).get();
+    const systemPrompt = doc.exists ? doc.data().system_prompt : "אתה עוזר כללי ועונה בעברית בצורה נעימה.";
+
+    const completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: message }
+        { role: "user", content: message },
       ],
     });
 
-    const reply = completion.choices[0].message.content;
+    const reply = completion.data.choices[0].message.content;
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("OpenAI API error:", error);
-    res.status(500).json({ error: "Failed to connect to OpenAI" });
+    console.error("API ERROR:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
