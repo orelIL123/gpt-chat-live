@@ -1,6 +1,6 @@
 // api/chat.js
 
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 const admin = require("firebase-admin");
 
 // Initialize Firebase Admin SDK only once
@@ -14,10 +14,9 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
