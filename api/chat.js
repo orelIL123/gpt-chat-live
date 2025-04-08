@@ -1,9 +1,7 @@
-// api/chat.js (Updated for OpenAI v4 and Firebase)
-
 const OpenAI = require("openai");
 const admin = require("firebase-admin");
 
-// Initialize Firebase Admin SDK
+// Initialize Firebase Admin SDK only once
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
@@ -14,7 +12,6 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Initialize OpenAI with API key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -40,7 +37,11 @@ module.exports = async (req, res) => {
 
   try {
     const doc = await db.collection("brains").doc(client_id).get();
-    const systemPrompt = doc.exists ? doc.data().system_prompt : "אתה עוזר כללי ועונה בעברית בצורה נעימה.";
+    const data = doc.exists ? doc.data() : {};
+    const systemPrompt =
+      typeof data.system_prompt === "string" && data.system_prompt.trim().length > 0
+        ? data.system_prompt
+        : "אתה עוזר כללי ועונה בעברית בצורה נעימה.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
