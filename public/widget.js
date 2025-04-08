@@ -3,20 +3,31 @@ document.addEventListener("DOMContentLoaded", function () {
   const client_id = "shira_tours";
   
   const chatButton = document.createElement("div");
-  chatButton.innerHTML = "💬";
+  const logoImg = document.createElement("img");
+  logoImg.src = "/logo/logo.png";
+  Object.assign(logoImg.style, {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    borderRadius: "50%"
+  });
+  chatButton.appendChild(logoImg);
   Object.assign(chatButton.style, {
     position: "fixed", bottom: "20px", left: "20px",
     width: "60px", height: "60px", borderRadius: "50%",
-    backgroundColor: "#25D366", color: "white",
+    backgroundColor: "white",
     display: "flex", justifyContent: "center", alignItems: "center",
     cursor: "pointer", boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-    zIndex: "1000", fontSize: "26px"
+    zIndex: "1000",
+    overflow: "hidden"
   });
 
   const chatWindow = document.createElement("div");
   Object.assign(chatWindow.style, {
     position: "fixed", bottom: "90px", left: "20px",
-    width: "300px", height: "400px", borderRadius: "10px",
+    width: "300px",
+    maxHeight: "calc(100vh - 120px)",
+    borderRadius: "10px",
     backgroundColor: "white", boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
     zIndex: "1000", display: "none", flexDirection: "column", overflow: "hidden"
   });
@@ -30,7 +41,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const chatBody = document.createElement("div");
   Object.assign(chatBody.style, {
-    padding: "10px", height: "300px", overflowY: "auto", direction: "rtl"
+    padding: "10px",
+    flexGrow: 1,
+    overflowY: "auto", direction: "rtl"
   });
 
   const chatInputArea = document.createElement("div");
@@ -57,9 +70,21 @@ document.addEventListener("DOMContentLoaded", function () {
   chatInputArea.appendChild(chatInput);
   chatInputArea.appendChild(sendButton);
 
+  // Create Powered by link
+  const poweredBy = document.createElement("div");
+  poweredBy.style.padding = "5px 10px";
+  poweredBy.style.textAlign = "center";
+  poweredBy.style.fontSize = "10px";
+  poweredBy.style.color = "#aaa";
+  poweredBy.style.borderTop = "1px solid #ececec";
+
+  const whatsappLink = "https://wa.me/972523985505?text=" + encodeURIComponent("היי אני מעוניין/ת בצאט בוט חכם לאתר שלי!");
+  poweredBy.innerHTML = `Powered by <a href="${whatsappLink}" target="_blank" style="color: #888; text-decoration: none;">Orel Aharon</a>`;
+
   chatWindow.appendChild(chatHeader);
   chatWindow.appendChild(chatBody);
   chatWindow.appendChild(chatInputArea);
+  chatWindow.appendChild(poweredBy);
 
   document.body.appendChild(chatButton);
   document.body.appendChild(chatWindow);
