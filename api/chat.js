@@ -32,16 +32,25 @@ module.exports = async (req, res) => {
 
   const { message, client_id } = req.body;
   if (!message || !client_id) {
+    console.error("API ERROR: Missing message or client_id in request body");
     return res.status(400).json({ error: "Missing message or client_id" });
   }
 
+  console.log(`[API LOG] Received request for client_id: ${client_id}`);
+
   try {
     const doc = await db.collection("brains").doc(client_id).get();
+    console.log(`[API LOG] Firestore document exists for ${client_id}: ${doc.exists}`);
     const data = doc.exists ? doc.data() : {};
+    if(doc.exists) {
+        console.log(`[API LOG] Data fetched for ${client_id}:`, JSON.stringify(data));
+        console.log(`[API LOG] Type of system_prompt: ${typeof data.system_prompt}`);
+    }
     const systemPrompt =
       typeof data.system_prompt === "string" && data.system_prompt.trim().length > 0
         ? data.system_prompt
         : "אתה עוזר כללי ועונה בעברית בצורה נעימה.";
+    console.log(`[API LOG] Using system prompt for ${client_id}: "${systemPrompt}"`);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
