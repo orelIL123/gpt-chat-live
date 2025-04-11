@@ -6,6 +6,9 @@
   "routes": [
     { "src": "/api/chat", "dest": "api/chat.js" },
     { "src": "/widget.js", "dest": "/public/widget.js" },
-    { "src": "/", "dest": "/public/index.html" }
+    { "src": "/logo/logo.png", "dest": "/public/logo/logo.png" },
+    { "src": "/test.txt", "dest": "/public/test.txt" },
+    { "src": "/", "dest": "/public/index.html" },
+    { "src": "/api/(.*)", "dest": "/api/$1" }
   ]
 }
