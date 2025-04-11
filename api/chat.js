@@ -17,6 +17,8 @@ const openai = new OpenAI({
 });
 
 module.exports = async (req, res) => {
+  console.log('[API LOG] Function handler started.');
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
