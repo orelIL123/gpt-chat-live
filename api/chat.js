@@ -25,7 +25,7 @@ if (!process.env.GOOGLE_API_KEY) {
   // Handle missing API key appropriately
 }
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // Using gemini-pro
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); // Using latest recommended model
 
 // 4. Main API Handler Function
 module.exports = async (req, res) => {
