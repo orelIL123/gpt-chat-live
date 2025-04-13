@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
   
   const chatButton = document.createElement("div");
   const logoImg = document.createElement("img");
-  logoImg.src = "logo/logo.png";
+  logoImg.src = "https://gpt-chat-live.vercel.app/logo/logo.png";
   Object.assign(logoImg.style, {
     width: "100%",
     height: "100%",
