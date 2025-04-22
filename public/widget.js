@@ -178,45 +178,69 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   // --- End Append Message Function ---
 
-  // --- Send Lead to API Function ---
-  async function sendLeadToApi() {
+  // --- Send Lead to Webhook Function (using hidden form) ---
+  function sendLeadToWebhook() {
       // Only send if client_id exists
       if (!client_id) {
           console.error("Cannot send lead: client_id is missing.");
           appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1)."); // Generic error
           return;
       }
-      console.log("Sending lead for client:", client_id, { name: capturedName, contact: capturedContact });
-      try {
-          // Send lead data to the Make.com webhook URL instead of the old API endpoint
-          const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // Updated n8n Production Webhook URL
-          const response = await fetch(n8nWebhookUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  name: capturedName,
-                  contact: capturedContact,
-                  clientId: client_id, // Use the dynamic client_id
-                  history: chatHistory // Send conversation history for context
-              })
-          });
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const result = await response.json();
-          console.log("Lead capture response:", result);
-          // Optionally display a confirmation or handle errors from the API response
-      } catch (error) {
-          console.error("Error sending lead to API:", error);
-          // Optionally inform the user about the error
-          appendMessage('bot', "אירעה שגיאה בשליחת הפרטים. אנא נסה שוב מאוחר יותר.");
-      } finally {
-          // Reset captured lead info
-          capturedName = '';
-          capturedContact = '';
-      }
+      console.log("Preparing to send lead via hidden form for client:", client_id, { name: capturedName, contact: capturedContact });
+
+      const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // n8n Production Webhook URL
+
+      // Create a hidden form element
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = n8nWebhookUrl;
+      form.style.display = 'none'; // Keep the form hidden
+
+      // Create hidden input fields for the data
+      const nameInput = document.createElement('input');
+      nameInput.type = 'hidden';
+      nameInput.name = 'name';
+      nameInput.value = capturedName;
+      form.appendChild(nameInput);
+
+      const contactInput = document.createElement('input');
+      contactInput.type = 'hidden';
+      contactInput.name = 'contact';
+      contactInput.value = capturedContact;
+      form.appendChild(contactInput);
+
+      const clientIdInput = document.createElement('input');
+      clientIdInput.type = 'hidden';
+      clientIdInput.name = 'clientId';
+      clientIdInput.value = client_id;
+      form.appendChild(clientIdInput);
+
+      // For the history, we might need to stringify it as JSON
+      const historyInput = document.createElement('input');
+      historyInput.type = 'hidden';
+      historyInput.name = 'history';
+      historyInput.value = JSON.stringify(chatHistory); // Stringify history array
+      form.appendChild(historyInput);
+
+      // Append the form to the body and submit it
+      document.body.appendChild(form);
+      form.submit();
+
+      console.log("Hidden form submitted.");
+
+      // Clean up the form after a short delay
+      setTimeout(() => {
+          document.body.removeChild(form);
+      }, 1000); // Remove after 1 second
+
+      // Reset captured lead info immediately after submission attempt
+      capturedName = '';
+      capturedContact = '';
+
+      // Display a success message in the chat immediately
+      appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
   }
-  // --- End Send Lead to API Function ---
+  // --- End Send Lead to Webhook Function ---
 
 
   // --- Send Message Function (Handles normal chat and lead capture flow) ---
@@ -246,7 +270,7 @@ document.addEventListener("DOMContentLoaded", function () {
         capturedContact = text;
         leadCaptureState = 'idle'; // End capture flow
         appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
-        await sendLeadToApi(); // Send the captured lead
+        sendLeadToWebhook(); // Send the captured lead using the hidden form
         return; // End interaction after capturing lead
     }
     // --- End Lead Capture Flow ---
