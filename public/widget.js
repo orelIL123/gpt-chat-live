@@ -189,7 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
       console.log("Sending lead for client:", client_id, { name: capturedName, contact: capturedContact });
       try {
           // Send lead data to the Make.com webhook URL instead of the old API endpoint
-          const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/2c8a7370-fa54-4909-82ae-8062efbc88f5'; // Switched to n8n Webhook URL
+          const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // Updated n8n Production Webhook URL
           const response = await fetch(n8nWebhookUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
