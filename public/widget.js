@@ -1,30 +1,68 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // --- Get Client ID from script tag using ID ---
+  const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
+  const client_id = widgetScriptElement?.dataset?.clientId; // Use optional chaining
+
+  if (!client_id) {
+    console.error("Chat Widget Error: Could not find script tag with id='vegos-chat-widget-script' or data-client-id attribute is missing/empty.");
+    // Optionally, prevent the widget from initializing further
+    // return;
+  } else {
+    console.log("Chat Widget Initialized for client:", client_id);
+  }
+  // --- End Get Client ID ---
+
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
-  const client_id = "shira_tours";
-  
+  const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead"; // New endpoint
+  const WELCOME_MESSAGE = "היי אני vegos העוזר החכם שלך לכל מה שתצטרך";
+  const AUTO_OPEN_DELAY = 5000; // milliseconds (5 seconds)
+  // Use the dynamic client_id for the history key
+  const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown'; // Fallback key if ID is missing
+  const LEAD_CAPTURE_KEYWORDS = ['נציג', 'פרטים', 'עזרה', 'contact', 'agent', 'representative', 'human', 'speak']; // Keywords to trigger lead capture
+  // Placeholder for API response indicating inability to answer - needs coordination with API
+  const API_CANNOT_ANSWER_RESPONSE = "אני מצטער, אין לי מידע על זה. האם תרצה להשאיר פרטים ונציג יחזור אליך?";
+
+  let chatHistory = [];
+  let leadCaptureState = 'idle'; // 'idle', 'askingName', 'askingContact'
+  let capturedName = '';
+  let capturedContact = '';
+
+  // --- CSS Injection for Pulse Animation ---
+  const styleSheet = document.createElement("style");
+  styleSheet.type = "text/css";
+  styleSheet.innerText = `
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .chat-button-pulse {
+      animation: pulse 2s infinite ease-in-out;
+    }
+  `;
+  document.head.appendChild(styleSheet);
+  // --- End CSS Injection ---
+
   const chatButton = document.createElement("div");
   const logoImg = document.createElement("img");
-  logoImg.src = "https://gpt-chat-live.vercel.app/logo/logo.png";
+  logoImg.src = "https://gpt-chat-live.vercel.app/logo/logo.png"; // Consider making this configurable
   Object.assign(logoImg.style, {
     width: "100%",
     height: "100%",
-    objectFit: "cover",
-    borderRadius: "50%"
   });
   chatButton.appendChild(logoImg);
   Object.assign(chatButton.style, {
-    position: "fixed", bottom: "20px", left: "20px",
-    width: "60px", height: "60px", borderRadius: "50%",
-    backgroundColor: "white",
+    position: "fixed", bottom: "20px", left: "20px", // Consider making position configurable
+    width: "60px", height: "60px",
     display: "flex", justifyContent: "center", alignItems: "center",
-    cursor: "pointer", boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-    zIndex: "1000",
-    overflow: "hidden"
+    cursor: "pointer",
+    zIndex: "1000"
   });
+  chatButton.classList.add('chat-button-pulse'); // Apply pulse animation class
 
   const chatWindow = document.createElement("div");
   Object.assign(chatWindow.style, {
-    position: "fixed", bottom: "90px", left: "20px",
+    position: "fixed", bottom: "90px", left: "20px", // Adjust if button position changes
     width: "300px",
     maxHeight: "calc(100vh - 120px)",
     borderRadius: "10px",
@@ -33,9 +71,10 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const chatHeader = document.createElement("div");
-  chatHeader.innerHTML = "<span>שירה תיירות</span><span id='close-chat' style='cursor:pointer;'> × </span>";
+  // TODO: Consider dynamically setting the title based on client_id or a fetched setting
+  chatHeader.innerHTML = `<span>${client_id || 'Chat'}</span><span id='close-chat' style='cursor:pointer;'> × </span>`;
   Object.assign(chatHeader.style, {
-    backgroundColor: "#25D366", color: "white", padding: "10px",
+    backgroundColor: "#25D366", color: "white", padding: "10px", // Consider making colors configurable
     fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center"
   });
 
@@ -53,7 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const chatInput = document.createElement("input");
   Object.assign(chatInput, {
-    type: "text", placeholder: "הקלד הודעה..."
+    type: "text", placeholder: "הקלד הודעה..." // Consider making placeholder configurable
   });
   Object.assign(chatInput.style, {
     flex: "1", padding: "8px", border: "1px solid #ddd",
@@ -61,9 +100,9 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const sendButton = document.createElement("button");
-  sendButton.textContent = "שלח";
+  sendButton.textContent = "שלח"; // Consider making text configurable
   Object.assign(sendButton.style, {
-    backgroundColor: "#25D366", color: "white", border: "none",
+    backgroundColor: "#25D366", color: "white", border: "none", // Consider making colors configurable
     borderRadius: "4px", padding: "8px 15px", cursor: "pointer"
   });
 
@@ -78,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
   poweredBy.style.color = "#aaa";
   poweredBy.style.borderTop = "1px solid #ececec";
 
-  const whatsappLink = "https://wa.me/972523985505?text=" + encodeURIComponent("היי אני מעוניין/ת בצאט בוט חכם לאתר שלי!");
+  const whatsappLink = "https://wa.me/972523985505?text=" + encodeURIComponent("היי אני מעוניין/ת בצאט בוט חכם לאתר שלי!"); // Consider making this configurable or removing
   poweredBy.innerHTML = `Powered by <a href="${whatsappLink}" target="_blank" style="color: #888; text-decoration: none;">Orel Aharon</a>`;
 
   chatWindow.appendChild(chatHeader);
@@ -89,51 +128,221 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.appendChild(chatButton);
   document.body.appendChild(chatWindow);
 
-  chatButton.addEventListener("click", () => {
-    chatWindow.style.display = "flex";
-  });
+  // --- Load Chat History ---
+  function loadHistory() {
+    // Only load history if client_id was found
+    if (!client_id) return;
+    const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (savedHistory) {
+      try {
+        chatHistory = JSON.parse(savedHistory);
+        chatHistory.forEach(msg => appendMessage(msg.role, msg.text, false)); // Don't save again while loading
+      } catch (e) {
+        console.error("Error parsing chat history:", e);
+        localStorage.removeItem(CHAT_HISTORY_KEY); // Clear corrupted history
+      }
+    }
+  }
+  // --- End Load Chat History ---
 
-  document.getElementById("close-chat").addEventListener("click", () => {
-    chatWindow.style.display = "none";
-  });
-
-  function appendMessage(role, text) {
+  // --- Append Message Function (Handles DOM and History) ---
+  function appendMessage(role, text, save = true) {
     const msg = document.createElement("div");
     msg.style.borderRadius = "5px";
     msg.style.padding = "8px";
     msg.style.marginBottom = "10px";
     msg.style.maxWidth = "80%";
-    msg.style.backgroundColor = role === "user" ? "#dcf8c6" : "#ececec";
+    msg.style.wordWrap = "break-word"; // Ensure long words wrap
+    msg.style.backgroundColor = role === "user" ? "#dcf8c6" : "#ececec"; // Consider configurable colors
+    msg.style.alignSelf = role === "user" ? "flex-start" : "flex-end"; // Align messages
+    msg.style.marginLeft = role === "user" ? "0" : "auto";
+    msg.style.marginRight = role === "user" ? "auto" : "0";
     msg.textContent = text;
     chatBody.appendChild(msg);
     chatBody.scrollTop = chatBody.scrollHeight;
-  }
 
+    // Only save if client_id exists and save flag is true
+    if (client_id && save) {
+      // Add message to history array only if not in lead capture asking phase
+      if (leadCaptureState === 'idle' || role === 'user') {
+          chatHistory.push({ role, text });
+          // Save updated history to localStorage
+          try {
+            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+          } catch (e) {
+            console.error("Error saving chat history:", e);
+          }
+      }
+    }
+    return msg; // Return the message element for potential updates
+  }
+  // --- End Append Message Function ---
+
+  // --- Send Lead to API Function ---
+  async function sendLeadToApi() {
+      // Only send if client_id exists
+      if (!client_id) {
+          console.error("Cannot send lead: client_id is missing.");
+          appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1)."); // Generic error
+          return;
+      }
+      console.log("Sending lead for client:", client_id, { name: capturedName, contact: capturedContact });
+      try {
+          // Send lead data to the Make.com webhook URL instead of the old API endpoint
+          const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/2c8a7370-fa54-4909-82ae-8062efbc88f5'; // Switched to n8n Webhook URL
+          const response = await fetch(n8nWebhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  name: capturedName,
+                  contact: capturedContact,
+                  clientId: client_id, // Use the dynamic client_id
+                  history: chatHistory // Send conversation history for context
+              })
+          });
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const result = await response.json();
+          console.log("Lead capture response:", result);
+          // Optionally display a confirmation or handle errors from the API response
+      } catch (error) {
+          console.error("Error sending lead to API:", error);
+          // Optionally inform the user about the error
+          appendMessage('bot', "אירעה שגיאה בשליחת הפרטים. אנא נסה שוב מאוחר יותר.");
+      } finally {
+          // Reset captured lead info
+          capturedName = '';
+          capturedContact = '';
+      }
+  }
+  // --- End Send Lead to API Function ---
+
+
+  // --- Send Message Function (Handles normal chat and lead capture flow) ---
   async function sendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    appendMessage("user", text);
-    chatInput.value = "";
-    appendMessage("bot", "...");
+    // Only proceed if client_id is available
+    if (!client_id) {
+        appendMessage('bot', "אירעה שגיאה בהגדרת הצ'אט (קוד: M1).", false);
+        return;
+    }
+
+    appendMessage("user", text); // Display user message and save it
+    const currentInput = text.toLowerCase();
+    chatInput.value = ""; // Clear input field immediately
+
+    // --- Lead Capture Flow ---
+    if (leadCaptureState === 'askingName') {
+        capturedName = text;
+        leadCaptureState = 'askingContact';
+        appendMessage('bot', "תודה, " + capturedName + ". מה כתובת המייל או מספר הטלפון שלך ליצירת קשר?");
+        return; // Wait for contact info
+    }
+
+    if (leadCaptureState === 'askingContact') {
+        capturedContact = text;
+        leadCaptureState = 'idle'; // End capture flow
+        appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
+        await sendLeadToApi(); // Send the captured lead
+        return; // End interaction after capturing lead
+    }
+    // --- End Lead Capture Flow ---
+
+    // Check for lead capture keywords if not already in the flow
+    const triggerLeadCapture = LEAD_CAPTURE_KEYWORDS.some(keyword => currentInput.includes(keyword));
+
+    if (triggerLeadCapture) {
+        leadCaptureState = 'askingName';
+        appendMessage('bot', "בטח, אשמח לעזור בכך. מה שמך?");
+        return; // Wait for name
+    }
+
+    // --- Normal Chat Flow ---
+    const botMsgElement = appendMessage("bot", "..."); // Display placeholder and save it
+    const placeholderIndex = chatHistory.length - 1; // Index of the placeholder message
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, client_id: client_id })
+        body: JSON.stringify({ message: text, client_id: client_id }) // Pass dynamic client_id
       });
 
+      if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      chatBody.lastChild.textContent = data.reply || "לא התקבלה תשובה";
+      const reply = data.reply || "לא התקבלה תשובה";
+      botMsgElement.textContent = reply; // Update the placeholder message element in DOM
+
+      // Update the placeholder message in history
+      if (placeholderIndex >= 0 && chatHistory[placeholderIndex]?.role === 'bot') {
+          chatHistory[placeholderIndex].text = reply;
+          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory)); // Save updated history
+      }
+
+      // TODO: Check if reply indicates inability to answer and trigger lead capture
+      // if (reply === API_CANNOT_ANSWER_RESPONSE) {
+      //     leadCaptureState = 'askingName';
+      //     appendMessage('bot', "בטח, אשמח לעזור בכך. מה שמך?");
+      // }
+
     } catch (err) {
       console.error("שגיאה בשליחה:", err);
-      chatBody.lastChild.textContent = "שגיאה בשליחה לשרת.";
+      const errorText = "שגיאה בשליחה לשרת.";
+      botMsgElement.textContent = errorText; // Update the placeholder message element in DOM
+       // Update the placeholder message in history with error
+       if (placeholderIndex >= 0 && chatHistory[placeholderIndex]?.role === 'bot') {
+          chatHistory[placeholderIndex].text = errorText;
+          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory)); // Save updated history
+      }
+    } finally {
+        chatBody.scrollTop = chatBody.scrollHeight; // Scroll down after response/error
     }
   }
+  // --- End Send Message Function ---
+
+  // --- Event Listeners ---
+  chatButton.addEventListener("click", () => {
+    chatWindow.style.display = "flex";
+    chatButton.classList.remove('chat-button-pulse'); // Stop pulsing when open
+  });
+
+  document.getElementById("close-chat").addEventListener("click", () => {
+    chatWindow.style.display = "none";
+    chatButton.classList.add('chat-button-pulse'); // Start pulsing again when closed
+  });
 
   sendButton.addEventListener("click", sendMessage);
   chatInput.addEventListener("keypress", e => {
     if (e.key === "Enter") sendMessage();
   });
+  // --- End Event Listeners ---
+
+  // --- Auto Open and Welcome Message ---
+  function openChatProactively() {
+      // Only open if client_id was found
+      if (!client_id) return;
+      // Check if the chat window is currently hidden
+      if (chatWindow.style.display === 'none') {
+          chatWindow.style.display = 'flex'; // Open the window
+          chatButton.classList.remove('chat-button-pulse'); // Stop pulsing
+          // Check if history is empty or last message wasn't the welcome message
+          if (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== WELCOME_MESSAGE) {
+             appendMessage('bot', WELCOME_MESSAGE); // Add welcome message
+          }
+      }
+  }
+
+  // Load history before setting the timeout
+  loadHistory();
+
+  // Set timeout to open proactively
+  setTimeout(openChatProactively, AUTO_OPEN_DELAY);
+  // --- End Auto Open ---
+
 });
