@@ -178,69 +178,59 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   // --- End Append Message Function ---
 
-  // --- Send Lead to Webhook Function (using hidden form) ---
-  function sendLeadToWebhook() {
-      // Only send if client_id exists
+  // --- Send Lead via Fetch Function ---
+  async function sendLeadViaFetch() {
       if (!client_id) {
           console.error("Cannot send lead: client_id is missing.");
-          appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1)."); // Generic error
+          appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1).");
           return;
       }
-      console.log("Preparing to send lead via hidden form for client:", client_id, { name: capturedName, contact: capturedContact });
+      console.log("Preparing to send lead via fetch for client:", client_id, { name: capturedName, contact: capturedContact });
 
-      const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // n8n Production Webhook URL
+      const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced';
 
-      // Create a hidden form element
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = n8nWebhookUrl;
-      form.style.display = 'none'; // Keep the form hidden
+      const leadData = {
+          name: capturedName,
+          contact: capturedContact,
+          clientId: client_id,
+          history: chatHistory // Send history array directly
+      };
 
-      // Create hidden input fields for the data
-      const nameInput = document.createElement('input');
-      nameInput.type = 'hidden';
-      nameInput.name = 'name';
-      nameInput.value = capturedName;
-      form.appendChild(nameInput);
+      try {
+          const response = await fetch(n8nWebhookUrl, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(leadData), // שלח כ-JSON
+              mode: 'cors' // חשוב לבקשות Cross-Origin
+          });
 
-      const contactInput = document.createElement('input');
-      contactInput.type = 'hidden';
-      contactInput.name = 'contact';
-      contactInput.value = capturedContact;
-      form.appendChild(contactInput);
+          if (!response.ok) {
+               // נסה לקרוא את גוף השגיאה אם אפשר
+               let errorBody = '';
+               try {
+                   errorBody = await response.text();
+               } catch (e) {}
+               console.error(`Error sending lead: HTTP status ${response.status}`, errorBody);
+               // הודעה כללית למשתמש, כי ייתכן שהשגיאה מהשרת לא רלוונטית לו
+               appendMessage('bot', "אירעה שגיאה בשליחת הפרטים (קוד: L2). נסה שוב מאוחר יותר.");
+          } else {
+               console.log("Lead sent successfully via fetch.");
+               // Reset captured lead info only on success
+               capturedName = '';
+               capturedContact = '';
+               // הצג הודעת הצלחה (כבר נעשה קודם)
+               // appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
+          }
 
-      const clientIdInput = document.createElement('input');
-      clientIdInput.type = 'hidden';
-      clientIdInput.name = 'clientId';
-      clientIdInput.value = client_id;
-      form.appendChild(clientIdInput);
-
-      // For the history, we might need to stringify it as JSON
-      const historyInput = document.createElement('input');
-      historyInput.type = 'hidden';
-      historyInput.name = 'history';
-      historyInput.value = JSON.stringify(chatHistory); // Stringify history array
-      form.appendChild(historyInput);
-
-      // Append the form to the body and submit it
-      document.body.appendChild(form);
-      form.submit();
-
-      console.log("Hidden form submitted.");
-
-      // Clean up the form after a short delay
-      setTimeout(() => {
-          document.body.removeChild(form);
-      }, 1000); // Remove after 1 second
-
-      // Reset captured lead info immediately after submission attempt
-      capturedName = '';
-      capturedContact = '';
-
-      // Display a success message in the chat immediately
-      appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
+      } catch (error) {
+          console.error("Error sending lead via fetch:", error);
+          // יכול להיות כשל ברשת או בעיה אחרת
+          appendMessage('bot', "אירעה שגיאה בשליחת הפרטים (קוד: L3). בדוק את חיבור האינטרנט ונסה שוב.");
+      }
   }
-  // --- End Send Lead to Webhook Function ---
+  // --- End Send Lead via Fetch Function ---
 
 
   // --- Send Message Function (Handles normal chat and lead capture flow) ---
@@ -270,7 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
         capturedContact = text;
         leadCaptureState = 'idle'; // End capture flow
         appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
-        sendLeadToWebhook(); // Send the captured lead using the hidden form
+        sendLeadViaFetch(); // קרא לפונקציה החדשה
         return; // End interaction after capturing lead
     }
     // --- End Lead Capture Flow ---
