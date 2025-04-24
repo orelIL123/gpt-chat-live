@@ -379,4 +379,5 @@ document.addEventListener("DOMContentLoaded", function () {
   setTimeout(openChatProactively, AUTO_OPEN_DELAY);
   // --- End Auto Open ---
 
+  // Trigger deployment marker
 });
