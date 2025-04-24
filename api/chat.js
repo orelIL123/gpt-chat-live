@@ -2,23 +2,16 @@
 
 // 1. Import necessary libraries
 const { GoogleGenerativeAI } = require("@google/generative-ai"); // Changed from openai
-const admin = require("firebase-admin");
-const { applyDynamicCors } = require("../lib/corsUtil.js"); // Import the new CORS utility
+// Remove direct admin import
+// const admin = require("firebase-admin"); 
+const { applyDynamicCors } = require("../lib/corsUtil.js"); // Import the CORS utility
+// Import the initialized db instance
+const { db } = require("../lib/firebaseAdmin.js");
 
-// 2. Initialize Firebase Admin SDK (only once)
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (error) {
-    console.error("Firebase Admin Initialization Error:", error);
-    // Handle initialization error appropriately, maybe exit or prevent function execution
-  }
-}
+// 2. REMOVE Firebase Admin SDK initialization block
+// if (!admin.apps.length) { ... }
 
-const db = admin.firestore();
+// const db = admin.firestore(); // Remove this too
 
 // 3. Initialize Google Generative AI Client
 if (!process.env.GOOGLE_API_KEY) {
@@ -73,6 +66,7 @@ module.exports = async (req, res) => {
 
   try {
     // 6. Fetch data (system prompt and history) from Firestore
+    // Use the imported db directly
     const docRef = db.collection("brains").doc(clientId);
     const doc = await docRef.get();
     const data = doc.exists ? doc.data() : {};
@@ -111,10 +105,13 @@ module.exports = async (req, res) => {
     const reply = response.text(); // Extract text reply
 
     // 9. Update Firestore with the new user message and AI reply
+    // Use the imported admin object if FieldValue is needed, OR ensure firebaseAdmin exports admin too.
+    // Assuming firebaseAdmin exports admin:
+    const { admin } = require("../lib/firebaseAdmin.js"); // Need admin for FieldValue
     const newUserMessageForHistory = { role: "user", parts: [{ text: message }] };
     const newAiMessageForHistory = { role: "model", parts: [{ text: reply }] };
 
-    await docRef.set( // Use set with merge:true or update carefully
+    await docRef.set( 
       {
         history: admin.firestore.FieldValue.arrayUnion(
           newUserMessageForHistory,

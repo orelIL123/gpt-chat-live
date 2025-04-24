@@ -32,33 +32,10 @@
  * npm install nodemailer
  */
 
-import admin from 'firebase-admin';
+// Import the initialized db instance (and admin if needed)
+import { db, admin } from '../lib/firebaseAdmin.js';
 import nodemailer from 'nodemailer'; // Import Nodemailer instead of SendGrid
 import { applyDynamicCors } from '../lib/corsUtil.js'; // Import the new CORS utility
-
-// --- Firebase Admin Initialization ---
-// Uses FIREBASE_SERVICE_ACCOUNT environment variable containing the JSON key file content
-try {
-  if (!admin.apps.length) {
-    const serviceAccountEnvVar = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!serviceAccountEnvVar) {
-      throw new Error('Firebase Service Account JSON was not found in environment variable FIREBASE_SERVICE_ACCOUNT.');
-    }
-    // Parse the JSON string from the environment variable
-    const serviceAccount = JSON.parse(serviceAccountEnvVar);
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount), // Use the parsed service account object
-    });
-    console.log("Firebase Admin Initialized using FIREBASE_SERVICE_ACCOUNT variable.");
-  }
-} catch (error) {
-  console.error('Firebase Admin Initialization Error:', error);
-  // Log the problematic env var content *carefully* for debugging if needed, but avoid logging secrets in production
-  // console.error('FIREBASE_SERVICE_ACCOUNT content (first 50 chars):', process.env.FIREBASE_SERVICE_ACCOUNT?.substring(0, 50));
-}
-const db = admin.firestore();
-// --- End Firebase Admin Initialization ---
 
 // --- Nodemailer with Zoho Mail Configuration ---
 // Create a reusable transporter object using Zoho Mail SMTP
@@ -167,8 +144,10 @@ export default async function handler(req, res) {
   }
 
   // Check if Firebase was initialized successfully before proceeding
-  if (!admin.apps.length) {
-    console.error("Firebase Admin SDK not initialized. Cannot process request.");
+  // We rely on the centralized initialization in firebaseAdmin.js now
+  // We can check if db is available as a proxy for successful init
+  if (!db) {
+    console.error("Firestore db instance not available. Firebase Admin SDK might not have initialized correctly.");
     return res.status(500).json({ message: 'Server configuration error: Firebase connection failed.' });
   }
 
