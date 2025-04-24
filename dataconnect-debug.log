@@ -1,0 +1,16 @@
+I0420 18:13:52.196960   27236 load.go:37] Reloading schema and connectors...
+I0420 18:13:52.277031   27236 control.go:71] [/emulator/chatbotend 11f0] UpdateResources(): done
+Schema: sources: schema\schema.gql [2088B] 
+Connector "default": sources: connector\mutations.gql [1233B] connector\queries.gql [1802B] 
+I0420 18:13:52.290915   27236 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "C:\\Users\\owner\\Downloads\\chatbot_end\\dataconnect-generated\\js\\default-connector"
+I0420 18:13:52.296074   27236 collector.go:107] schema extensions wrote into "C:\\Users\\owner\\Downloads\\chatbot_end\\dataconnect\\.dataconnect\\schema"
+Generated sources: prelude.gql [69396B] 
+I0420 18:13:52.297631   27236 collector.go:107] connector "default" javascriptSdk wrote into "C:\\Users\\owner\\Downloads\\chatbot_end\\dataconnect-generated\\js\\default-connector"
+Generated sources: README.md [2774B] index.d.ts [246B] esm\index.esm.js [113B] esm\package.json [17B] index.cjs.js [148B] package.json [634B] 
+I0420 18:13:52.313258   27236 installsdk.go:80] Running command: C:\Program Files\nodejs\npm.cmd install file:dataconnect-generated\js\default-connector
+I0420 18:13:55.705873   27236 load.go:115] Finished reloading
+I0420 18:13:55.707909   27236 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:9399
+I0420 18:13:55.708963   27236 dev.go:95] Listening on address (HTTP + gRPC): [::1]:9399
+I0420 18:13:58.889635   27236 control.go:71] [/emulator/chatbotend cd71] UpdateResources(): done
+Schema: sources: schema\schema.gql [2088B] 
+Connector "default": sources: connector\queries.gql [1802B] connector\mutations.gql [1233B] 

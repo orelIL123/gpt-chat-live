@@ -39,11 +39,30 @@ document.addEventListener("DOMContentLoaded", function () {
     .chat-button-pulse {
       animation: pulse 2s infinite ease-in-out;
     }
+
+    /* Responsive adjustments for smaller screens */
+    @media (max-width: 600px) {
+      #vegos-chat-window { /* Use an ID for easier targeting */
+        width: 90% !important; /* More width on mobile */
+        max-width: calc(100% - 20px) !important; /* Ensure it doesn't exceed screen width */
+        left: 10px !important;
+        right: 10px !important; /* Set both left and right for centering/spanning */
+        bottom: 75px !important; /* Adjust bottom position relative to button */
+        max-height: calc(100vh - 95px) !important; /* Adjust max height accordingly */
+      }
+      #vegos-chat-button { /* Use an ID for easier targeting */
+         left: 10px !important;
+         bottom: 10px !important;
+         width: 50px !important; /* Slightly smaller button */
+         height: 50px !important;
+      }
+    }
   `;
   document.head.appendChild(styleSheet);
   // --- End CSS Injection ---
 
   const chatButton = document.createElement("div");
+  chatButton.id = 'vegos-chat-button'; // Add ID for CSS targeting
   const logoImg = document.createElement("img");
   logoImg.src = "https://gpt-chat-live.vercel.app/logo/logo.png"; // Consider making this configurable
   Object.assign(logoImg.style, {
@@ -61,6 +80,7 @@ document.addEventListener("DOMContentLoaded", function () {
   chatButton.classList.add('chat-button-pulse'); // Apply pulse animation class
 
   const chatWindow = document.createElement("div");
+  chatWindow.id = 'vegos-chat-window'; // Add ID for CSS targeting
   Object.assign(chatWindow.style, {
     position: "fixed", bottom: "90px", left: "20px", // Adjust if button position changes
     width: "300px",
@@ -187,7 +207,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       console.log("Preparing to send lead via fetch for client:", client_id, { name: capturedName, contact: capturedContact });
 
-      const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced';
+      // const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // Remove or comment out the old URL
 
       const leadData = {
           name: capturedName,
@@ -197,7 +217,7 @@ document.addEventListener("DOMContentLoaded", function () {
       };
 
       try {
-          const response = await fetch(n8nWebhookUrl, {
+          const response = await fetch(LEAD_CAPTURE_API_URL, { // Use the correct API URL constant
               method: 'POST',
               headers: {
                   'Content-Type': 'application/json',

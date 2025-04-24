@@ -2,7 +2,10 @@
   "name": "gpt-chat-api",
   "version": "1.0.0",
   "dependencies": {
+    "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "@google/generative-ai": "^0.11.4",
-    "firebase-admin": "^11.10.1"
+    "@sendgrid/mail": "^7.7.0",
+    "firebase-admin": "^11.10.1",
+    "nodemailer": "^6.9.1"
   }
 }

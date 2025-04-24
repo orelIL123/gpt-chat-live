@@ -3,6 +3,7 @@
 // 1. Import necessary libraries
 const { GoogleGenerativeAI } = require("@google/generative-ai"); // Changed from openai
 const admin = require("firebase-admin");
+const { applyDynamicCors } = require("../lib/corsUtil.js"); // Import the new CORS utility
 
 // 2. Initialize Firebase Admin SDK (only once)
 if (!admin.apps.length) {
@@ -30,12 +31,28 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); // U
 // 4. Main API Handler Function
 module.exports = async (req, res) => {
   console.log("[GEMINI CODE] Function handler started."); // ADDED FOR DEBUGGING
-  // CORS Headers
-  res.setHeader("Access-Control-Allow-Origin", "*"); // Adjust in production for security
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle OPTIONS preflight request
+  // Get clientId early for CORS check
+  const clientId = req.body?.client_id || req.query?.client_id; // Try getting from body or query
+
+  // Apply CORS check *before* any other logic
+  const corsPassed = await applyDynamicCors(req, res, clientId);
+
+  // If CORS failed, stop processing.
+  if (!corsPassed) {
+      // applyDynamicCors already sent the response (403 or 400) or decided not to set headers.
+      // If no origin was present, we might still want to allow OPTIONS.
+       if (req.method === 'OPTIONS' && !req.headers.origin) {
+          // Allow OPTIONS even without origin for simple requests, but don't set Allow-Origin
+          res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+          return res.status(200).end();
+      }
+      // Otherwise, if corsPassed is false, the response was already handled.
+      return; 
+  }
+
+  // Handle OPTIONS preflight request (CORS headers already set by applyDynamicCors)
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
@@ -47,14 +64,16 @@ module.exports = async (req, res) => {
   }
 
   // 5. Extract request body parameters
-  const { message, client_id } = req.body;
-  if (!message || !client_id) {
+  const { message } = req.body;
+  // clientId already extracted above
+  if (!message || !clientId) {
+    // Add explicit check for clientId again, although CORS check should have caught it
     return res.status(400).json({ error: "Missing message or client_id" });
   }
 
   try {
     // 6. Fetch data (system prompt and history) from Firestore
-    const docRef = db.collection("brains").doc(client_id);
+    const docRef = db.collection("brains").doc(clientId);
     const doc = await docRef.get();
     const data = doc.exists ? doc.data() : {};
 
@@ -78,7 +97,7 @@ module.exports = async (req, res) => {
     ];
 
     // 8. Call Google Gemini API
-    console.log(`Calling Gemini for client_id: ${client_id} with ${contents.length} content parts.`); // Log for debugging
+    console.log(`Calling Gemini for client_id: ${clientId} with ${contents.length} content parts.`); // Log for debugging
     const result = await model.generateContent({ contents });
     const response = result.response; // Use optional chaining for safety
 
@@ -107,13 +126,13 @@ module.exports = async (req, res) => {
       { merge: true } // Use merge:true to avoid overwriting other fields if doc exists
     );
 
-    console.log(`Successfully updated history for client_id: ${client_id}`); // Log success
+    console.log(`Successfully updated history for client_id: ${clientId}`); // Log success
 
     // 10. Send the reply back to the client
     res.status(200).json({ reply });
 
   } catch (error) {
-    console.error(`Error processing chat for client_id ${client_id}:`, error); // Log the error
+    console.error(`Error processing chat for client_id ${clientId}:`, error); // Log the error
     // Check for specific Gemini API errors if needed (e.g., error.status, error.message)
     res.status(500).json({ error: "Internal server error", details: error.message });
   }

@@ -1,2 +1,4 @@
 # Firebase service account files
 firebase/ 
+.qodo
+node_modules

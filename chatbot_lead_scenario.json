@@ -1,0 +1,164 @@
+{
+  "name": "Chatbot Lead Capture",
+  "flow": [
+    {
+      "id": 1,
+      "module": "webhook",
+      "version": 1,
+      "parameters": {
+        "method": "POST",
+        "data": [
+          { "name": "name", "type": "text" },
+          { "name": "contact", "type": "text" },
+          { "name": "clientId", "type": "text" },
+          { "name": "chatHistory", "type": "text" }
+        ]
+      },
+      "filter": null,
+      "map": null,
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        },
+        "restore": {
+          "expect": {
+            "data": {
+              "name": "Data structure",
+              "type": "array",
+              "required": true,
+              "spec": [
+                { "name": "name", "type": "text", "label": "name" },
+                { "name": "contact", "type": "text", "label": "contact" },
+                { "name": "clientId", "type": "text", "label": "clientId" },
+                { "name": "chatHistory", "type": "text", "label": "chatHistory" }
+              ]
+            }
+          }
+        },
+        "parameters": [
+          { "name": "method", "type": "select", "label": "Method", "required": true },
+          { "name": "data", "type": "array", "label": "Data structure", "required": true }
+        ],
+        "interface": [
+          { "name": "name", "type": "text", "label": "name" },
+          { "name": "contact", "type": "text", "label": "contact" },
+          { "name": "clientId", "type": "text", "label": "clientId" },
+          { "name": "chatHistory", "type": "text", "label": "chatHistory" }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "tools:SetVariable",
+      "version": 1,
+      "parameters": {
+        "variableName": "businessEmail",
+        "variableValue": "// מיפוי בין client_id לכתובת אימייל\nconst clientEmailMap = {\n  \"neve_world\": \"email1@example.com\",\n  \"orelai\": \"email2@example.com\",\n  \"shira_tours\": \"email3@example.com\"\n  // הוסף עוד client_ids וכתובות אימייל לפי הצורך\n};\n\n// קבל את ה-client_id מהנתונים שהתקבלו\nconst clientId = {{1.clientId}};\n\n// החזר את כתובת האימייל המתאימה או כתובת ברירת מחדל\nreturn clientEmailMap[clientId] || \"vegoschat@gmail.com\";"
+      },
+      "filter": null,
+      "map": {
+        "variableName": "businessEmail",
+        "variableValue": "{{1.clientId}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 250,
+          "y": 0
+        },
+        "restore": {
+          "parameters": {
+            "variableName": {
+              "label": "Variable name",
+              "type": "text",
+              "required": true
+            },
+            "variableValue": {
+              "label": "Variable value",
+              "type": "any",
+              "required": true
+            }
+          }
+        },
+        "parameters": [
+          { "name": "variableName", "type": "text", "label": "Variable name", "required": true },
+          { "name": "variableValue", "type": "any", "label": "Variable value", "required": true }
+        ],
+        "interface": [
+          { "name": "businessEmail", "type": "any", "label": "businessEmail" }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "module": "gmail:SendEmail",
+      "version": 1,
+      "parameters": {
+        "to": "{{2.businessEmail}}",
+        "subject": "ליד חדש מהצ'אטבוט באתר שלך",
+        "html": "<h2>פרטי ליד חדש מהצ'אטבוט</h2>\n<p><strong>שם:</strong> {{1.name}}</p>\n<p><strong>פרטי קשר:</strong> {{1.contact}}</p>\n<p><strong>מזהה לקוח:</strong> {{1.clientId}}</p>\n<p><strong>תאריך ושעה:</strong> {{formatDate(now; \"DD/MM/YYYY HH:mm\")}}</p>\n\n<h3>היסטוריית השיחה:</h3>\n<div style=\"background-color: #f5f5f5; padding: 15px; border-radius: 5px;\">\n{{1.chatHistory}}\n</div>\n\n<p>הודעה זו נשלחה באופן אוטומטי על ידי מערכת הצ'אטבוט.</p>"
+      },
+      "filter": null,
+      "map": {
+        "to": "{{2.businessEmail}}",
+        "subject": "ליד חדש מהצ'אטבוט באתר שלך",
+        "html": "<h2>פרטי ליד חדש מהצ'אטבוט</h2>\n<p><strong>שם:</strong> {{1.name}}</p>\n<p><strong>פרטי קשר:</strong> {{1.contact}}</p>\n<p><strong>מזהה לקוח:</strong> {{1.clientId}}</p>\n<p><strong>תאריך ושעה:</strong> {{formatDate(now; \"DD/MM/YYYY HH:mm\")}}</p>\n\n<h3>היסטוריית השיחה:</h3>\n<div style=\"background-color: #f5f5f5; padding: 15px; border-radius: 5px;\">\n{{1.chatHistory}}\n</div>\n\n<p>הודעה זו נשלחה באופן אוטומטי על ידי מערכת הצ'אטבוט.</p>"
+      },
+      "metadata": {
+        "designer": {
+          "x": 500,
+          "y": 0
+        },
+        "restore": {
+          "parameters": {
+            "to": {
+              "label": "To",
+              "type": "text",
+              "required": true
+            },
+            "subject": {
+              "label": "Subject",
+              "type": "text",
+              "required": true
+            },
+            "html": {
+              "label": "Content (HTML)",
+              "type": "textarea",
+              "required": true
+            }
+          }
+        },
+        "parameters": [
+          { "name": "connection", "type": "select", "label": "Connection", "required": true },
+          { "name": "to", "type": "text", "label": "To", "required": true },
+          { "name": "subject", "type": "text", "label": "Subject", "required": true },
+          { "name": "html", "type": "textarea", "label": "Content (HTML)", "required": true }
+        ],
+        "interface": []
+      }
+    }
+  ],
+  "metadata": {
+    "version": 1,
+    "created": "2023-10-27T10:00:00.000Z",
+    "modified": "2023-10-27T10:00:00.000Z",
+    "scheduling": {
+      "type": "interval",
+      "interval": 15,
+      "unit": "minutes",
+      "advanced": false
+    },
+    "flow": {
+      "1": {
+        "to": [
+          { "module_id": 2 }
+        ]
+      },
+      "2": {
+        "to": [
+          { "module_id": 3 }
+        ]
+      }
+    }
+  }
+}
