@@ -1,0 +1,5 @@
+<script
+  id="vegos-chat-widget-script"
+  src="https://gpt-chat-live.vercel.app/public/widget.js"
+  data-client-id="YOUR_CLIENT_ID_HERE"
+></script>

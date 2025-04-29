@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            direction: rtl;
+            display: flex;
+            gap: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        #client-list-section, #client-details-section {
+            flex: 1;
+            border: 1px solid #eee;
+            padding: 15px;
+            max-width: 300px; /* Limit width of side panels */
+        }
+         #main-content-section {
+            flex: 3; /* Give more space to main content */
+            border: 1px solid #eee;
+            padding: 15px;
+         }
+        #client-list ul {
+            list-style: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #client-list li {
+            margin-bottom: 8px;
+            padding: 5px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+         #client-list li:hover {
+             background-color: #f0f0f0;
+             border-color: #ddd;
+         }
+         #client-list li.selected {
+             background-color: #e0e0ff;
+             font-weight: bold;
+         }
+        #admin-commands {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed #ccc;
+        }
+        #admin-commands textarea {
+            width: 95%;
+            min-height: 80px;
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+        #admin-commands button {
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+        .loading, .error {
+            font-style: italic;
+            color: #888;
+        }
+        .error {
+            color: red;
+        }
+        #client-details p {
+            margin: 5px 0;
+        }
+    </style>
+    <!-- Firebase SDK scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <div id="client-list-section">
+        <h2>רשימת לקוחות</h2>
+        <ul id="client-list">
+            <li class="loading">טוען רשימת לקוחות...</li>
+            <!-- Client list will be populated dynamically -->
+        </ul>
+    </div>
+
+    <div id="main-content-section">
+        <div id="client-details-section">
+             <h2>פרטי לקוח נבחר</h2>
+             <div id="client-details">
+                 <p><i>בחר לקוח מהרשימה</i></p>
+                 <!-- Details like name, email, phone will be populated here -->
+             </div>
+        </div>
+
+        <div id="message-table-container">
+            <h2>היסטוריית הודעות (מ-Leads)</h2>
+            <p>עבור לקוח: <strong id="current-client-id-display">---</strong></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>חותמת זמן קבלה</th>
+                        <th>תפקיד</th>
+                        <th>הודעה</th>
+                    </tr>
+                </thead>
+                <tbody id="message-table-body">
+                    <tr><td colspan="3"><i>בחר לקוח מהרשימה</i></td></tr>
+                    <!-- Message rows will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="admin-commands">
+            <h2>פקודות אדמין</h2>
+            <div>
+                <label for="admin-prompt">הנחיה ל-AI לשליחת מייל:</label><br>
+                <textarea id="admin-prompt" placeholder="לדוגמה: שלח מייל תודה ללקוח ותגיד שנחזור אליו בקרוב בנוגע להזמנה."></textarea>
+            </div>
+            <button id="send-command-button" disabled>שלח פקודה ל-n8n</button>
+            <p id="command-status" style="margin-top: 10px;"></p>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Configuration ---
+        const ADMIN_COMMAND_WEBHOOK_URL = 'YOUR_NEW_N8N_ADMIN_COMMAND_WEBHOOK_URL'; // <-- REPLACE WITH ACTUAL URL!
+        let db; // Firebase Firestore instance
+        let selectedClientId = null;
+        let selectedClientEmail = null; // To store the email for sending commands
+
+        // --- DOM Elements ---
+        const clientListUl = document.getElementById('client-list');
+        const clientDetailsDiv = document.getElementById('client-details');
+        const currentClientIdDisplay = document.getElementById('current-client-id-display');
+        const messageTableBody = document.getElementById('message-table-body');
+        const adminPromptTextarea = document.getElementById('admin-prompt');
+        const sendCommandButton = document.getElementById('send-command-button');
+        const commandStatusP = document.getElementById('command-status');
+
+        // --- Firebase Initialization ---
+        function initializeFirebase() {
+            const firebaseConfig = {
+              apiKey: "AIzaSyBR6Z50VtVK-Dd1e2fiy3ryBtwOSjQlogo",
+              authDomain: "gpt-chat-saas.firebaseapp.com",
+              projectId: "gpt-chat-saas",
+              storageBucket: "gpt-chat-saas.firebasestorage.app",
+              messagingSenderId: "206429388071",
+              appId: "1:206429388071:web:31140f728435b8c85afd02",
+              measurementId: "G-H6HBLS06ZB"
+            };
+
+            try {
+                // Initialize Firebase
+                firebase.initializeApp(firebaseConfig);
+                // Get a reference to the Firestore service
+                db = firebase.firestore();
+                console.log("Firebase initialized successfully.");
+                return true; // Indicate success
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                clientListUl.innerHTML = `<li class="error">שגיאה באתחול Firebase: ${error.message}</li>`;
+                return false; // Indicate failure
+            }
+        }
+
+        // --- Load Clients ---
+        async function loadClients() {
+            if (!db) {
+                clientListUl.innerHTML = '<li class="error">Firebase לא אותחל כראוי.</li>';
+                return;
+            }
+            clientListUl.innerHTML = '<li class="loading">טוען רשימת לקוחות...</li>';
+            try {
+                const snapshot = await db.collection('brains').get();
+                clientListUl.innerHTML = ''; // Clear loading message
+                if (snapshot.empty) {
+                    clientListUl.innerHTML = '<li>לא נמצאו לקוחות.</li>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const clientId = doc.id;
+                    const clientData = doc.data();
+                    const li = document.createElement('li');
+                    li.textContent = clientId; // Display clientId for now
+                    li.dataset.clientId = clientId;
+                    // Store email if available (assuming it's in leadTargetEmail or another field)
+                    li.dataset.clientEmail = clientData.leadTargetEmail || '';
+                    li.addEventListener('click', handleClientSelection);
+                    clientListUl.appendChild(li);
+                });
+            } catch (error) {
+                console.error("Error loading clients:", error);
+                clientListUl.innerHTML = `<li class="error">שגיאה בטעינת לקוחות: ${error.message}</li>`;
+            }
+        }
+
+        // --- Handle Client Selection ---
+        function handleClientSelection(event) {
+            const targetLi = event.currentTarget;
+            selectedClientId = targetLi.dataset.clientId;
+            selectedClientEmail = targetLi.dataset.clientEmail; // Get stored email
+
+            // Highlight selected client
+            document.querySelectorAll('#client-list li').forEach(li => li.classList.remove('selected'));
+            targetLi.classList.add('selected');
+
+            currentClientIdDisplay.textContent = selectedClientId;
+            sendCommandButton.disabled = false; // Enable command button
+            commandStatusP.textContent = ''; // Clear previous status
+            adminPromptTextarea.value = ''; // Clear prompt
+
+            loadClientDetails(selectedClientId);
+            loadClientMessages(selectedClientId);
+        }
+
+        // --- Load Client Details ---
+        async function loadClientDetails(clientId) {
+             if (!db) return;
+             clientDetailsDiv.innerHTML = '<p class="loading">טוען פרטי לקוח...</p>';
+             try {
+                 const docRef = db.collection('brains').doc(clientId);
+                 const docSnap = await docRef.get();
+                 if (docSnap.exists()) {
+                     const data = docSnap.data();
+                     // TODO: Adjust field names based on your 'brains' structure
+                     clientDetailsDiv.innerHTML = `
+                         <p><strong>ID:</strong> ${clientId}</p>
+                         <p><strong>Email (Leads):</strong> ${data.leadTargetEmail || 'N/A'}</p>
+                         <!-- Add other relevant fields from 'brains' here -->
+                         <!-- <p><strong>Name:</strong> ${data.name || 'N/A'}</p> -->
+                         <!-- <p><strong>Phone:</strong> ${data.phone || 'N/A'}</p> -->
+                     `;
+                     // Update selectedClientEmail again in case it wasn't in the list item dataset
+                     selectedClientEmail = data.leadTargetEmail || selectedClientEmail;
+                 } else {
+                     clientDetailsDiv.innerHTML = '<p class="error">פרטי הלקוח לא נמצאו.</p>';
+                 }
+             } catch (error) {
+                 console.error("Error loading client details:", error);
+                 clientDetailsDiv.innerHTML = `<p class="error">שגיאה בטעינת פרטי לקוח: ${error.message}</p>`;
+             }
+        }
+
+
+        // --- Load Client Messages (from 'leads' collection) ---
+        async function loadClientMessages(clientId) {
+            if (!db) return;
+            messageTableBody.innerHTML = '<tr><td colspan="3" class="loading">טוען הודעות...</td></tr>';
+            try {
+                // Query 'leads' collection, filter by clientId, order by receivedAt
+                const snapshot = await db.collection('leads')
+                                         .where('clientId', '==', clientId)
+                                         .orderBy('receivedAt', 'desc') // Show newest first
+                                         .limit(50) // Limit results for performance
+                                         .get();
+
+                messageTableBody.innerHTML = ''; // Clear loading message
+                if (snapshot.empty) {
+                    messageTableBody.innerHTML = '<tr><td colspan="3">לא נמצאו הודעות (ב-Leads) עבור לקוח זה.</td></tr>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const leadData = doc.data();
+                    const history = leadData.history || []; // Get the history array
+                    const receivedTimestamp = leadData.receivedAt?.toDate ? leadData.receivedAt.toDate().toLocaleString() : 'N/A';
+
+                    // Add a row for the lead capture event itself
+                     const leadRow = messageTableBody.insertRow();
+                     leadRow.innerHTML = `<td>${receivedTimestamp}</td><td><strong>Lead Capture</strong></td><td>שם: ${leadData.name || 'N/A'}, קשר: ${leadData.contact || 'N/A'}</td>`;
+
+
+                    // Add rows for each message in the history array of that lead
+                    history.forEach(msg => {
+                        const row = messageTableBody.insertRow();
+                        // Assuming history messages don't have individual timestamps from Firestore
+                        row.innerHTML = `<td>(מתוך ליד)</td><td>${msg.role || 'N/A'}</td><td>${msg.text || ''}</td>`;
+                    });
+                });
+            } catch (error) {
+                console.error("Error loading client messages:", error);
+                messageTableBody.innerHTML = `<tr><td colspan="3" class="error">שגיאה בטעינת הודעות: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Send Admin Command ---
+        async function sendAdminCommand() {
+            const adminPrompt = adminPromptTextarea.value.trim();
+
+            if (!selectedClientId) {
+                commandStatusP.textContent = 'שגיאה: יש לבחור לקוח.';
+                commandStatusP.className = 'error';
+                return;
+            }
+            if (!selectedClientEmail) {
+                 commandStatusP.textContent = 'שגיאה: לא נמצאה כתובת מייל לשליחה עבור לקוח זה (בדוק הגדרות ב-Firebase).';
+                 commandStatusP.className = 'error';
+                 return;
+            }
+             if (!adminPrompt) {
+                commandStatusP.textContent = 'שגיאה: יש להזין הנחיה ל-AI.';
+                commandStatusP.className = 'error';
+                return;
+            }
+            if (ADMIN_COMMAND_WEBHOOK_URL === 'YOUR_NEW_N8N_ADMIN_COMMAND_WEBHOOK_URL') {
+                 commandStatusP.textContent = 'שגיאה: יש להגדיר את כתובת ה-Webhook הנכונה בקוד.';
+                 commandStatusP.className = 'error';
+                 return;
+            }
+
+
+            commandStatusP.textContent = 'שולח פקודה ל-n8n...';
+            commandStatusP.className = 'loading';
+            sendCommandButton.disabled = true;
+
+            const payload = {
+                clientId: selectedClientId,
+                adminPrompt: adminPrompt,
+                recipientEmail: selectedClientEmail
+                // TODO: Consider adding message history here if the n8n AI needs it
+                // history: [...]
+            };
+
+            try {
+                const response = await fetch(ADMIN_COMMAND_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    // Try to get error message from n8n if possible
+                    let errorMsg = `שגיאת שרת מ-n8n: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg += ` - ${errorData.message || JSON.stringify(errorData)}`;
+                    } catch (e) { /* Ignore if response is not JSON */ }
+                    throw new Error(errorMsg);
+                }
+
+                // Assuming n8n returns success status (e.g., 200 OK)
+                commandStatusP.textContent = 'הפקודה נשלחה בהצלחה ל-n8n!';
+                commandStatusP.className = 'success'; // Add a CSS class for success styling if needed
+                adminPromptTextarea.value = ''; // Clear prompt on success
+
+            } catch (error) {
+                console.error("Error sending admin command:", error);
+                commandStatusP.textContent = `שגיאה בשליחת פקודה: ${error.message}`;
+                commandStatusP.className = 'error';
+            } finally {
+                sendCommandButton.disabled = false; // Re-enable button
+            }
+        }
+
+        // --- Event Listeners ---
+        sendCommandButton.addEventListener('click', sendAdminCommand);
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (initializeFirebase()) {
+                 loadClients();
+            }
+        });
+
+    </script>
+
+</body>
+</html>

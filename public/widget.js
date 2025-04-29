@@ -1,17 +1,27 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // --- Get Client ID from script tag using ID ---
-  const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
-  const client_id = widgetScriptElement?.dataset?.clientId; // Use optional chaining
+  // --- Get Client ID: Prioritize URL parameter, fallback to script tag ---
+  let client_id = null;
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlClientId = urlParams.get('clientId');
 
-  if (!client_id) {
-    console.error("Chat Widget Error: Could not find script tag with id='vegos-chat-widget-script' or data-client-id attribute is missing/empty.");
-    // Optionally, prevent the widget from initializing further
-    // return;
+  if (urlClientId) {
+    client_id = urlClientId;
+    console.log("Chat Widget: Using clientId from URL parameter:", client_id);
   } else {
-    console.log("Chat Widget Initialized for client:", client_id);
+    const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
+    const scriptClientId = widgetScriptElement?.dataset?.clientId; // Use optional chaining
+    if (scriptClientId) {
+      client_id = scriptClientId;
+      console.log("Chat Widget: Using clientId from script tag:", client_id);
+    } else {
+      console.error("Chat Widget Error: Could not find clientId in URL parameter ('clientId') or in script tag ('vegos-chat-widget-script' with 'data-client-id'). Widget may not function correctly.");
+      // Optionally, prevent the widget from initializing further if client_id is critical
+      // return;
+    }
   }
   // --- End Get Client ID ---
 
+const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat'; // New n8n webhook
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
   const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead"; // New endpoint
   const WELCOME_MESSAGE = "היי אני vegos העוזר החכם שלך לכל מה שתצטרך";
@@ -91,12 +101,45 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const chatHeader = document.createElement("div");
-  // TODO: Consider dynamically setting the title based on client_id or a fetched setting
-  chatHeader.innerHTML = `<span>${client_id || 'Chat'}</span><span id='close-chat' style='cursor:pointer;'> × </span>`;
   Object.assign(chatHeader.style, {
     backgroundColor: "#25D366", color: "white", padding: "10px", // Consider making colors configurable
     fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center"
   });
+
+  // Create Title Span
+  const titleSpan = document.createElement("span");
+  titleSpan.textContent = client_id || 'Chat'; // Use determined client_id or default
+  chatHeader.appendChild(titleSpan);
+
+  // Create container for buttons/links on the right (or left in RTL)
+  const headerControls = document.createElement("div");
+  headerControls.style.display = "flex";
+  headerControls.style.alignItems = "center";
+
+  // Add Admin Link (if client_id exists)
+  if (client_id) {
+      const adminLink = document.createElement("a");
+      adminLink.textContent = "מעבר לאדמין";
+      adminLink.href = `https://admin.chatvegosai.app/client/${encodeURIComponent(client_id)}`;
+      adminLink.target = "_blank"; // Open in new tab
+      Object.assign(adminLink.style, {
+          color: 'white',
+          textDecoration: 'none',
+          fontSize: '12px',
+          marginRight: '15px' // Space between link and close button
+      });
+      headerControls.appendChild(adminLink);
+  }
+
+  // Add Close Button
+  const closeButton = document.createElement("span");
+  closeButton.id = 'close-chat';
+  closeButton.textContent = '×';
+  closeButton.style.cursor = 'pointer';
+  closeButton.style.fontSize = '20px'; // Make it slightly larger
+  headerControls.appendChild(closeButton);
+
+  chatHeader.appendChild(headerControls);
 
   const chatBody = document.createElement("div");
   Object.assign(chatBody.style, {
@@ -209,6 +252,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // Remove or comment out the old URL
 
+// --- Send Message to n8n Webhook ---
+  async function sendToN8nWebhook(message, clientId) {
+    if (!clientId) {
+      console.error("Cannot send to n8n: client_id is missing.");
+      return; // Don't proceed without clientId
+    }
+    if (!message) {
+        console.error("Cannot send to n8n: message is empty.");
+        return; // Don't send empty messages
+    }
+
+    console.log(`Sending message to n8n for client ${clientId}`);
+    const payload = {
+      message: message,
+      clientId: clientId
+    };
+
+    try {
+      const response = await fetch(N8N_CHAT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        mode: 'cors' // Important for cross-origin requests
+      });
+
+      if (!response.ok) {
+        // Log error but don't bother the user, it's a background task
+        console.error(`Error sending message to n8n webhook: HTTP status ${response.status}`);
+        try {
+            const errorBody = await response.text();
+            console.error("n8n webhook error body:", errorBody);
+        } catch(e) {
+            console.error("Could not read n8n error response body.");
+        }
+      } else {
+        console.log("Message sent successfully to n8n webhook.");
+      }
+    } catch (error) {
+      console.error("Network or other error sending message to n8n webhook:", error);
+    }
+  }
+sendToN8nWebhook(text, client_id); // Send message to n8n webhook
+  // --- End Send Message to n8n Webhook ---
       const leadData = {
           name: capturedName,
           contact: capturedContact,
