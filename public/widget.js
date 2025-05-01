@@ -24,8 +24,9 @@ document.addEventListener("DOMContentLoaded", function () {
 const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat'; // New n8n webhook
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
   const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead"; // New endpoint
-  const WELCOME_MESSAGE = "היי אני vegos העוזר החכם שלך לכל מה שתצטרך";
   const AUTO_OPEN_DELAY = 5000; // milliseconds (5 seconds)
+  const CLIENT_CONFIG_API_URL = "https://gpt-chat-live.vercel.app/api/client_config"; // New endpoint for client config
+  let welcomeMessage = "היי אני vegos העוזר החכם שלך לכל מה שתצטרך"; // Default welcome message
   // Use the dynamic client_id for the history key
   const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown'; // Fallback key if ID is missing
   const LEAD_CAPTURE_KEYWORDS = ['נציג', 'פרטים', 'עזרה', 'contact', 'agent', 'representative', 'human', 'speak']; // Keywords to trigger lead capture
@@ -116,20 +117,6 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   headerControls.style.display = "flex";
   headerControls.style.alignItems = "center";
 
-  // Add Admin Link (if client_id exists)
-  if (client_id) {
-      const adminLink = document.createElement("a");
-      adminLink.textContent = "מעבר לאדמין";
-      adminLink.href = `https://admin.chatvegosai.app/client/${encodeURIComponent(client_id)}`;
-      adminLink.target = "_blank"; // Open in new tab
-      Object.assign(adminLink.style, {
-          color: 'white',
-          textDecoration: 'none',
-          fontSize: '12px',
-          marginRight: '15px' // Space between link and close button
-      });
-      headerControls.appendChild(adminLink);
-  }
 
   // Add Close Button
   const closeButton = document.createElement("span");
@@ -229,6 +216,11 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
       // Add message to history array only if not in lead capture asking phase
       if (leadCaptureState === 'idle' || role === 'user') {
           chatHistory.push({ role, text });
+          // Limit history to the last 10 messages
+          const MAX_HISTORY_LENGTH = 10;
+          if (chatHistory.length > MAX_HISTORY_LENGTH) {
+              chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY_LENGTH);
+          }
           // Save updated history to localStorage
           try {
             localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
@@ -454,18 +446,45 @@ sendToN8nWebhook(text, client_id); // Send message to n8n webhook
           chatWindow.style.display = 'flex'; // Open the window
           chatButton.classList.remove('chat-button-pulse'); // Stop pulsing
           // Check if history is empty or last message wasn't the welcome message
-          if (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== WELCOME_MESSAGE) {
-             appendMessage('bot', WELCOME_MESSAGE); // Add welcome message
-          }
+          if (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== welcomeMessage) {
+             appendMessage('bot', welcomeMessage); // Add welcome message using the fetched or default message
+           }
       }
   }
 
-  // Load history before setting the timeout
+  // Load history and fetch client config before setting the timeout
   loadHistory();
+fetchClientConfig(); // Fetch client configuration
 
   // Set timeout to open proactively
   setTimeout(openChatProactively, AUTO_OPEN_DELAY);
   // --- End Auto Open ---
 
+// --- Fetch Client Configuration ---
+  async function fetchClientConfig() {
+      if (!client_id) {
+          console.error("Cannot fetch client config: client_id is missing.");
+          return;
+      }
+      try {
+          const response = await fetch(`${CLIENT_CONFIG_API_URL}?client_id=${encodeURIComponent(client_id)}`);
+          if (!response.ok) {
+              console.error(`Error fetching client config: HTTP status ${response.status}`);
+              // Continue with default welcome message
+              return;
+          }
+          const config = await response.json();
+          if (config.welcome_message) {
+              welcomeMessage = config.welcome_message; // Update welcome message if found
+              console.log("Using client-specific welcome message:", welcomeMessage);
+          } else {
+              console.log("No client-specific welcome message found, using default.");
+          }
+      } catch (error) {
+          console.error("Error fetching client config:", error);
+          // Continue with default welcome message on error
+      }
+  }
+  // --- End Fetch Client Configuration ---
   // Trigger deployment marker
 });
