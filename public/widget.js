@@ -307,8 +307,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
       console.error("Network or other error sending message to n8n webhook:", error);
     }
   }
-sendToN8nWebhook(text, client_id); // Send message to n8n webhook
-  // --- End Send Message to n8n Webhook ---
+  // sendToN8nWebhook(text, client_id); // Send message to n8n webhook - מבוטל כי text לא מוגדר כאן
       const leadData = {
           name: capturedName,
           contact: capturedContact,
