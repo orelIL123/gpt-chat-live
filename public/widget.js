@@ -56,8 +56,8 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
       #vegos-chat-window {
         width: 85% !important;
         max-width: 370px !important;
-        left: auto !important;
-        right: 10px !important;
+        left: 10px !important;
+        right: auto !important;
         bottom: 75px !important;
         max-height: 70vh !important;
         height: auto !important;
@@ -67,8 +67,8 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
       }
       
       #vegos-chat-button {
-        left: auto !important;
-        right: 10px !important;
+        left: 10px !important;
+        right: auto !important;
         bottom: 10px !important;
         width: 55px !important;
         height: 55px !important;
@@ -100,7 +100,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   });
   chatButton.appendChild(logoImg);
   Object.assign(chatButton.style, {
-    position: "fixed", bottom: "20px", right: "20px", // Changed from left to right
+    position: "fixed", bottom: "20px", left: "20px", // Changed back to left
     width: "60px", height: "60px",
     display: "flex", justifyContent: "center", alignItems: "center",
     cursor: "pointer",
@@ -111,7 +111,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   const chatWindow = document.createElement("div");
   chatWindow.id = 'vegos-chat-window'; // Add ID for CSS targeting
   Object.assign(chatWindow.style, {
-    position: "fixed", bottom: "90px", right: "20px", // Changed from left to right
+    position: "fixed", bottom: "90px", left: "20px", // Changed back to left
     width: "300px",
     maxHeight: "calc(100vh - 120px)",
     borderRadius: "10px",
