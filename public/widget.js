@@ -24,9 +24,9 @@ document.addEventListener("DOMContentLoaded", function () {
 const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat'; // New n8n webhook
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
   const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead"; // New endpoint
-  const AUTO_OPEN_DELAY = 5000; // milliseconds (5 seconds)
+  const AUTO_OPEN_DELAY = null; // Removed the 5 second auto-open
   const CLIENT_CONFIG_API_URL = "https://gpt-chat-live.vercel.app/api/client_config"; // New endpoint for client config
-  let welcomeMessage = "היי אני vegos העוזר החכם שלך לכל מה שתצטרך"; // Default welcome message
+  let welcomeMessage = ""; // Removed default welcome message
   // Use the dynamic client_id for the history key
   const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown'; // Fallback key if ID is missing
   const LEAD_CAPTURE_KEYWORDS = ['נציג', 'פרטים', 'עזרה', 'contact', 'agent', 'representative', 'human', 'speak']; // Keywords to trigger lead capture
@@ -51,21 +51,39 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
       animation: pulse 2s infinite ease-in-out;
     }
 
-    /* Responsive adjustments for smaller screens */
+    /* Improved responsive adjustments for mobile */
     @media (max-width: 600px) {
-      #vegos-chat-window { /* Use an ID for easier targeting */
-        width: 90% !important; /* More width on mobile */
-        max-width: calc(100% - 20px) !important; /* Ensure it doesn't exceed screen width */
-        left: 10px !important;
-        right: 10px !important; /* Set both left and right for centering/spanning */
-        bottom: 75px !important; /* Adjust bottom position relative to button */
-        max-height: calc(100vh - 95px) !important; /* Adjust max height accordingly */
+      #vegos-chat-window {
+        width: 85% !important;
+        max-width: 370px !important;
+        left: auto !important;
+        right: 10px !important;
+        bottom: 75px !important;
+        max-height: 70vh !important;
+        height: auto !important;
+        transform: none !important;
+        -webkit-transform: none !important;
+        zoom: 1 !important;
       }
-      #vegos-chat-button { /* Use an ID for easier targeting */
-         left: 10px !important;
-         bottom: 10px !important;
-         width: 50px !important; /* Slightly smaller button */
-         height: 50px !important;
+      
+      #vegos-chat-button {
+        left: auto !important;
+        right: 10px !important;
+        bottom: 10px !important;
+        width: 55px !important;
+        height: 55px !important;
+        transform: none !important;
+        -webkit-transform: none !important;
+        zoom: 1 !important;
+      }
+      
+      #vegos-chat-body {
+        max-height: calc(70vh - 125px) !important;
+      }
+      
+      /* Fix input on mobile */
+      #vegos-chat-input {
+        font-size: 16px !important; /* Prevents zoom on iOS */
       }
     }
   `;
@@ -82,7 +100,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   });
   chatButton.appendChild(logoImg);
   Object.assign(chatButton.style, {
-    position: "fixed", bottom: "20px", left: "20px", // Consider making position configurable
+    position: "fixed", bottom: "20px", right: "20px", // Changed from left to right
     width: "60px", height: "60px",
     display: "flex", justifyContent: "center", alignItems: "center",
     cursor: "pointer",
@@ -93,7 +111,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   const chatWindow = document.createElement("div");
   chatWindow.id = 'vegos-chat-window'; // Add ID for CSS targeting
   Object.assign(chatWindow.style, {
-    position: "fixed", bottom: "90px", left: "20px", // Adjust if button position changes
+    position: "fixed", bottom: "90px", right: "20px", // Changed from left to right
     width: "300px",
     maxHeight: "calc(100vh - 120px)",
     borderRadius: "10px",
@@ -129,6 +147,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   chatHeader.appendChild(headerControls);
 
   const chatBody = document.createElement("div");
+  chatBody.id = "vegos-chat-body"; // Add ID for CSS targeting
   Object.assign(chatBody.style, {
     padding: "10px",
     flexGrow: 1,
@@ -141,6 +160,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   chatInputArea.style.borderTop = "1px solid #ececec";
 
   const chatInput = document.createElement("input");
+  chatInput.id = "vegos-chat-input"; // Add ID for CSS targeting
   Object.assign(chatInput, {
     type: "text", placeholder: "הקלד הודעה..." // Consider making placeholder configurable
   });
@@ -439,25 +459,27 @@ sendToN8nWebhook(text, client_id); // Send message to n8n webhook
 
   // --- Auto Open and Welcome Message ---
   function openChatProactively() {
-      // Only open if client_id was found
-      if (!client_id) return;
+      // Only open if client_id was found and auto-open is enabled
+      if (!client_id || AUTO_OPEN_DELAY === null) return;
       // Check if the chat window is currently hidden
       if (chatWindow.style.display === 'none') {
           chatWindow.style.display = 'flex'; // Open the window
           chatButton.classList.remove('chat-button-pulse'); // Stop pulsing
-          // Check if history is empty or last message wasn't the welcome message
-          if (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== welcomeMessage) {
-             appendMessage('bot', welcomeMessage); // Add welcome message using the fetched or default message
-           }
+          // Only add welcome message if it's set and history is empty or last message wasn't the welcome
+          if (welcomeMessage && (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== welcomeMessage)) {
+             appendMessage('bot', welcomeMessage);
+          }
       }
   }
 
   // Load history and fetch client config before setting the timeout
   loadHistory();
-fetchClientConfig(); // Fetch client configuration
+  fetchClientConfig(); // Fetch client configuration
 
-  // Set timeout to open proactively
-  setTimeout(openChatProactively, AUTO_OPEN_DELAY);
+  // Only set timeout if AUTO_OPEN_DELAY is not null
+  if (AUTO_OPEN_DELAY !== null) {
+      setTimeout(openChatProactively, AUTO_OPEN_DELAY);
+  }
   // --- End Auto Open ---
 
 // --- Fetch Client Configuration ---
