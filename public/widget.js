@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
 const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat'; // New n8n webhook
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
   const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead"; // New endpoint
-  const AUTO_OPEN_DELAY = null; // Removed the 5 second auto-open
+  const AUTO_OPEN_DELAY = 0; // Set to 0 to open immediately and show welcome message
   const CLIENT_CONFIG_API_URL = "https://gpt-chat-live.vercel.app/api/client_config"; // New endpoint for client config
   let welcomeMessage = ""; // Removed default welcome message
   // Use the dynamic client_id for the history key
