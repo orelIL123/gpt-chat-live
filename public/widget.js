@@ -476,34 +476,40 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   fetchClientConfig(); // Fetch client configuration
 
   // Only set timeout if AUTO_OPEN_DELAY is not null
-  if (AUTO_OPEN_DELAY !== null) {
-      setTimeout(openChatProactively, AUTO_OPEN_DELAY);
-  }
-  // --- End Auto Open ---
+// --- End Auto Open ---
 
 // --- Fetch Client Configuration ---
   async function fetchClientConfig() {
       if (!client_id) {
           console.error("Cannot fetch client config: client_id is missing.");
+          // Even if client_id is missing, we might still want to open the chat with default/empty message
+          if (AUTO_OPEN_DELAY !== null) { // Check delay here too
+              setTimeout(openChatProactively, AUTO_OPEN_DELAY);
+          }
           return;
       }
       try {
           const response = await fetch(`${CLIENT_CONFIG_API_URL}?client_id=${encodeURIComponent(client_id)}`);
           if (!response.ok) {
               console.error(`Error fetching client config: HTTP status ${response.status}`);
-              // Continue with default welcome message
-              return;
-          }
-          const config = await response.json();
-          if (config.welcome_message) {
-              welcomeMessage = config.welcome_message; // Update welcome message if found
-              console.log("Using client-specific welcome message:", welcomeMessage);
+              // If fetching fails, welcomeMessage remains "" (default)
           } else {
-              console.log("No client-specific welcome message found, using default.");
+              const config = await response.json();
+              if (config.welcome_message) {
+                  welcomeMessage = config.welcome_message; // Update welcome message if found
+                  console.log("Using client-specific welcome message:", welcomeMessage);
+              } else {
+                  console.log("No client-specific welcome message found, using default.");
+              }
           }
       } catch (error) {
           console.error("Error fetching client config:", error);
-          // Continue with default welcome message on error
+          // If fetching fails, welcomeMessage remains "" (default)
+      } finally {
+          // Call openChatProactively AFTER fetching config (or attempting to)
+          if (AUTO_OPEN_DELAY !== null) { // Check delay here too
+              setTimeout(openChatProactively, AUTO_OPEN_DELAY);
+          }
       }
   }
   // --- End Fetch Client Configuration ---
