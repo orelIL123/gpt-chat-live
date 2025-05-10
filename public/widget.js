@@ -441,8 +441,13 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
 
   // --- Event Listeners ---
   chatButton.addEventListener("click", () => {
-    chatWindow.style.display = "flex";
-    chatButton.classList.remove('chat-button-pulse'); // Stop pulsing when open
+    if (chatWindow.style.display === "none" || !chatWindow.style.display) {
+      chatWindow.style.display = "flex";
+      chatButton.classList.remove('chat-button-pulse'); // Stop pulsing when open
+    } else {
+      chatWindow.style.display = "none";
+      chatButton.classList.add('chat-button-pulse'); // Start pulsing again when closed
+    }
   });
 
   document.getElementById("close-chat").addEventListener("click", () => {
