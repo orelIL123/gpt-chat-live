@@ -93,7 +93,7 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   const chatButton = document.createElement("div");
   chatButton.id = 'vegos-chat-button'; // Add ID for CSS targeting
   const logoImg = document.createElement("img");
-  logoImg.src = "https://gpt-chat-live.vercel.app/logo/logo.png"; // Consider making this configurable
+  logoImg.src = "https://cdn-icons-png.flaticon.com/512/1041/1041916.png"; // Changed to a standard chat bubble icon
   Object.assign(logoImg.style, {
     width: "100%",
     height: "100%",
