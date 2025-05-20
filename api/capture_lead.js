@@ -104,145 +104,121 @@ async function sendEmailWithRetry(mailOptions, attempt = 1) {
 }
 
 export default async function handler(req, res) {
-  // Get clientId early for CORS check
-  const clientId = req.body?.clientId || req.query?.clientId; // Try getting from body or query
-
-  // Apply CORS check *before* any other logic
-  // The function will handle setting headers or sending 403
-  const corsPassed = await applyDynamicCors(req, res, clientId);
-
-  // If CORS failed (403 sent or headers not set for a non-origin request), stop processing.
-  // Also handle the case where clientId was missing (applyDynamicCors sends 400).
-  if (!corsPassed) {
-      // applyDynamicCors already sent the response (403 or 400) or decided not to set headers.
-      // If no origin was present, we might still want to allow OPTIONS.
-      if (req.method === 'OPTIONS' && !req.headers.origin) {
-          // Allow OPTIONS even without origin for simple requests, but don't set Allow-Origin
-          res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-          res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-          return res.status(200).end();
-      }
-      // Otherwise, if corsPassed is false, the response was already handled.
-      return; 
-  }
-
-  // Handle OPTIONS preflight request (CORS headers already set by applyDynamicCors if origin was valid)
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // Handle actual POST request
   if (req.method !== 'POST') {
-    // We already set CORS headers if origin was valid, so just send 405
-    return res.status(405).json({ message: 'Method Not Allowed' });
+    return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  // --- Existing POST logic starts here ---
-  // Ensure client_id is available (already partially checked in CORS, but double-check)
-  if (!clientId) {
-      return res.status(400).json({ message: 'Client ID is required in the request body or query string.' });
-  }
+  const { 
+    name, 
+    contact, 
+    client_id, 
+    intent,
+    confidence,
+    conversation_history,
+    lead_score
+  } = req.body;
 
-  // Check if Firebase was initialized successfully before proceeding
-  // We rely on the centralized initialization in firebaseAdmin.js now
-  // We can check if db is available as a proxy for successful init
-  if (!db) {
-    console.error("Firestore db instance not available. Firebase Admin SDK might not have initialized correctly.");
-    return res.status(500).json({ message: 'Server configuration error: Firebase connection failed.' });
-  }
-
-  // Ensure Nodemailer is configured before proceeding
-  if (!transporter) {
-    console.error("Nodemailer not configured. Cannot process request.");
-    return res.status(500).json({ message: 'Server configuration error: Email service not configured.' });
-  }
-
-  const { name, contact, history } = req.body;
-
-  if (!name || !contact || !clientId) {
-    return res.status(400).json({ message: 'Missing required lead data (name, contact, clientId)' });
+  if (!name || !contact || !client_id) {
+    return res.status(400).json({ message: 'Missing required fields' });
   }
 
   try {
-    // 1. Fetch client settings from Firestore 'brains' collection
-    const clientRef = db.collection('brains').doc(clientId);
-    const clientDoc = await clientRef.get();
+    // שמירת הליד ב-Firebase
+    // const leadData = {
+    //   name,
+    //   contact,
+    //   client_id,
+    //   intent: intent || 'unknown',
+    //   confidence: confidence || 0,
+    //   lead_score: lead_score || 0,
+    //   conversation_history: conversation_history || [],
+    //   timestamp: new Date().toISOString(),
+    //   status: 'new'
+    // };
+    // const leadRef = await db.collection('leads').add(leadData);
 
-    if (!clientDoc.exists) {
-      console.error(`Client settings not found in 'brains' for clientId: ${clientId}`);
-      return res.status(404).json({ message: 'Client configuration not found.' });
-    }
+    // שליחת התראה למנהל המערכת
+    await sendLeadNotification({ name, contact, client_id, intent, confidence, lead_score, conversation_history });
 
-    const clientSettings = clientDoc.data();
-    // Read the target email from the 'leadTargetEmail' field
-    const targetEmail = clientSettings.leadTargetEmail;
+    // שליחת אישור ללקוח
+    const confirmationMessage = generateConfirmationMessage({ name, contact, client_id, intent, confidence, lead_score, conversation_history });
 
-    if (!targetEmail) {
-      console.error(`Target email (leadTargetEmail) not configured for clientId: ${clientId} in 'brains' collection.`);
-      return res.status(500).json({ message: 'Server configuration error: Missing target email for client.' });
-    }
-
-    console.log(`Processing lead for ${clientId}. Target Email: ${targetEmail}`);
-
-    // Format history for readability (optional)
-    const formattedHistory = history?.map(msg => `${msg.role}: ${msg.text}`).join('\n') || 'No history provided.';
-
-    // 2. Save lead to Firestore 'leads' collection
-    const leadsCollection = db.collection('leads');
-    const leadData = {
-      clientId: clientId,
-      name: name,
-      contact: contact,
-      history: history || [], // Store the original history array
-      receivedAt: admin.firestore.FieldValue.serverTimestamp(), // Add a timestamp
-      status: 'new' // Optional: Add a status field
-    };
-
-    try {
-      const leadDocRef = await leadsCollection.add(leadData);
-      console.log(`Lead saved to Firestore with ID: ${leadDocRef.id} for client ${clientId}`);
-    } catch (firestoreError) {
-      console.error(`Error saving lead to Firestore for ${clientId}:`, firestoreError);
-      // If Firestore save fails, return an error immediately. Saving the lead is critical.
-      return res.status(500).json({ message: 'Failed to save lead data to database.' });
-    }
-
-    // 3. Send email using Nodemailer with Zoho Mail (Only if Firestore save succeeded)
-    const mailOptions = {
-      from: {
-        name: fromName,
-        address: zohoUser
-      },
-      to: targetEmail, // Target email from client settings
-      subject: `ליד חדש מאתר ${clientId}!`, // Updated subject
-      text: `היי יש ליד חדש באתר שלך!\n\nפרטי הליד:\nשם: ${name}\nפרטי קשר: ${contact}\n\nהיסטוריית שיחה:\n${formattedHistory}\n\nכדי שתטפל בו! עד אז אני כאן.`, // Updated email body
-      html: `<p>היי יש ליד חדש באתר שלך!</p>
-             <p><strong>פרטי הליד:</strong></p>
-             <ul>
-               <li><strong>שם:</strong> ${name}</li>
-               <li><strong>פרטי קשר:</strong> ${contact}</li>
-             </ul>
-             <p><strong>היסטוריית שיחה:</strong></p>
-             <pre>${formattedHistory}</pre>
-             <p>כדי שתטפל בו! עד אז אני כאן.</p>`, // Updated HTML email body
-    };
-
-    try {
-      // Use our retry-enabled email sending function
-      await sendEmailWithRetry(mailOptions);
-      console.log(`Email sent successfully to ${targetEmail} for client ${clientId}`);
-      // Success: Lead saved and email sent
-      return res.status(200).json({ message: 'Lead captured, saved, and email sent.' });
-    } catch (emailError) {
-      console.error(`Error sending email for ${clientId} to ${targetEmail}:`, emailError);
-      // Firestore save succeeded, but email failed. Return a success status but indicate email failure.
-      // We return 200 because the primary goal (saving the lead) succeeded.
-      return res.status(200).json({ message: 'Lead saved, but email notification failed.' });
-    }
-
+    return res.status(200).json({
+      success: true,
+      message: confirmationMessage,
+      // lead_id: leadRef.id
+    });
   } catch (error) {
-    // Catch other unexpected errors during processing (e.g., fetching client settings)
-    console.error('Error processing lead capture:', error);
-    return res.status(500).json({ message: 'Internal Server Error processing lead.' });
+    console.error('Error capturing lead:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
+}
+
+// פונקציה לשליחת התראה למנהל
+async function sendLeadNotification(leadData) {
+  try {
+    // שליחת התראה ל-Slack או מערכת אחרת
+    const notification = {
+      text: `🎯 ליד חדש!\nשם: ${leadData.name}\nאמצעי התקשרות: ${leadData.contact}\nכוונה: ${leadData.intent}\nציון: ${leadData.lead_score}`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: "*🎯 ליד חדש!*"
+          }
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*שם:*\n${leadData.name}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*אמצעי התקשרות:*\n${leadData.contact}`
+            }
+          ]
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*כוונה:*\n${leadData.intent}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*ציון:*\n${leadData.lead_score}`
+            }
+          ]
+        }
+      ]
+    };
+
+    // שליחת ההתראה ל-Slack
+    await fetch(process.env.SLACK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(notification)
+    });
+  } catch (error) {
+    console.error('Error sending lead notification:', error);
+  }
+}
+
+// פונקציה ליצירת הודעת אישור
+function generateConfirmationMessage(leadData) {
+  const messages = {
+    pricing: "תודה על העניין! נציג שלנו יצור איתך קשר בקרוב עם הצעת מחיר מותאמת.",
+    complex_queries: "תודה על השאלה! נציג מומחה יצור איתך קשר בקרוב עם מידע מפורט.",
+    human_assistance: "תודה! נציג שלנו יצור איתך קשר בהקדם.",
+    detailed_info: "תודה על העניין! נציג שלנו יצור איתך קשר עם כל המידע המבוקש.",
+    general_inquiry: "תודה! נציג שלנו יצור איתך קשר בהקדם."
+  };
+
+  return messages[leadData.intent] || messages.general_inquiry;
 }
