@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>צ'אט בוט</title>
+    <link rel="stylesheet" href="widget.css">
+</head>
+<body>
+    <div id="chat-widget" class="chat-widget">
+        <div class="chat-header">
+            <h3>צ'אט עם נציג</h3>
+            <button class="minimize-button" id="minimize-chat">−</button>
+        </div>
+        
+        <div id="chat-messages" class="chat-messages">
+            <div class="message bot-message">
+                שלום! אני כאן כדי לעזור לך. במה אוכל לסייע?
+            </div>
+        </div>
+        
+        <button id="scroll-to-bottom" class="scroll-button" onclick="scrollToBottom()">
+            <span>▼</span>
+        </button>
+        
+        <div class="chat-input-container">
+            <input type="text" id="message-input" class="message-input" placeholder="הקלד הודעה...">
+            <button id="send-message" class="chat-button">שלח</button>
+        </div>
+    </div>
+
+    <script src="widget.js"></script>
+</body>
+</html> 

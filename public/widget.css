@@ -1,0 +1,251 @@
+/* עיצוב כללי */
+.chat-widget {
+    position: fixed;
+    bottom: 90px;
+    left: 20px;
+    width: 300px;
+    max-height: calc(100vh - 120px);
+    border-radius: 10px;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transition: height 0.3s ease-in-out;
+}
+
+/* עיצוב כפתור הצ'אט */
+#vegos-chat-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+#vegos-chat-button img {
+    width: 100%;
+    height: 100%;
+}
+
+/* עיצוב כותרת */
+.chat-header {
+    background-color: #25D366;
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* עיצוב כפתורים */
+.minimize-button, #close-chat {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+    transition: opacity 0.3s;
+}
+
+.minimize-button:hover, #close-chat:hover {
+    opacity: 0.8;
+}
+
+/* עיצוב אזור ההודעות */
+.chat-messages {
+    padding: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+    direction: rtl;
+}
+
+/* עיצוב הודעות */
+.message {
+    padding: 10px 15px;
+    margin: 5px 0;
+    border-radius: 15px;
+    max-width: 80%;
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.user-message {
+    background-color: #007bff;
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 5px;
+}
+
+.bot-message {
+    background-color: #f1f1f1;
+    color: #333;
+    margin-right: auto;
+    border-bottom-left-radius: 5px;
+}
+
+/* עיצוב אזור הקלט */
+.chat-input-area {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #ececec;
+    gap: 5px;
+}
+
+.message-input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    direction: rtl;
+}
+
+.chat-button {
+    background-color: #25D366;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.chat-button:hover {
+    background-color: #128C7E;
+}
+
+/* עיצוב Powered by */
+.powered-by {
+    padding: 5px 10px;
+    text-align: center;
+    font-size: 10px;
+    color: #aaa;
+    border-top: 1px solid #ececec;
+}
+
+.powered-by a {
+    color: #888;
+    text-decoration: none;
+}
+
+/* אנימציות */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(10px); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.chat-button-pulse {
+    animation: pulse 2s infinite ease-in-out;
+}
+
+/* מיזעור */
+.chat-widget.minimized {
+    height: 50px;
+    overflow: hidden;
+}
+
+.chat-widget.minimized .chat-messages,
+.chat-widget.minimized .chat-input-area,
+.chat-widget.minimized .powered-by {
+    display: none;
+}
+
+.chat-widget.minimized .chat-header {
+    border-radius: 25px;
+}
+
+/* התראות */
+.alert {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-size: 0.9em;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert.fade-out {
+    animation: fadeOut 0.3s ease-out;
+}
+
+/* טעינה */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #25D366;
+    border-radius: 50%;
+    animation: spin 1s linear infinite, fadeIn 0.3s ease-out;
+}
+
+.loading.fade-out {
+    animation: fadeOut 0.3s ease-out;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* התאמה למובייל */
+@media (max-width: 600px) {
+    .chat-widget {
+        width: 85%;
+        max-width: 370px;
+        left: 10px;
+        bottom: 75px;
+        max-height: 70vh;
+    }
+    
+    #vegos-chat-button {
+        left: 10px;
+        bottom: 10px;
+        width: 55px;
+        height: 55px;
+    }
+    
+    .chat-messages {
+        max-height: calc(70vh - 125px);
+    }
+    
+    .message-input {
+        font-size: 16px;
+    }
+} 

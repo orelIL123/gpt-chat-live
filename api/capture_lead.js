@@ -124,18 +124,18 @@ export default async function handler(req, res) {
 
   try {
     // שמירת הליד ב-Firebase
-    // const leadData = {
-    //   name,
-    //   contact,
-    //   client_id,
-    //   intent: intent || 'unknown',
-    //   confidence: confidence || 0,
-    //   lead_score: lead_score || 0,
-    //   conversation_history: conversation_history || [],
-    //   timestamp: new Date().toISOString(),
-    //   status: 'new'
-    // };
-    // const leadRef = await db.collection('leads').add(leadData);
+    const leadData = {
+      name,
+      contact,
+      client_id,
+      intent: intent || 'unknown',
+      confidence: confidence || 0,
+      lead_score: lead_score || 0,
+      conversation_history: conversation_history || [],
+      timestamp: new Date().toISOString(),
+      status: 'new'
+    };
+    const leadRef = await db.collection('leads').add(leadData);
 
     // שליחת התראה למנהל המערכת
     await sendLeadNotification({ name, contact, client_id, intent, confidence, lead_score, conversation_history });
@@ -146,7 +146,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       message: confirmationMessage,
-      // lead_id: leadRef.id
+      lead_id: leadRef.id
     });
   } catch (error) {
     console.error('Error capturing lead:', error);
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
 // פונקציה לשליחת התראה למנהל
 async function sendLeadNotification(leadData) {
   try {
-    // שליחת התראה ל-Slack או מערכת אחרת
+    // שליחת התראה ל-Slack
     const notification = {
       text: `🎯 ליד חדש!\nשם: ${leadData.name}\nאמצעי התקשרות: ${leadData.contact}\nכוונה: ${leadData.intent}\nציון: ${leadData.lead_score}`,
       blocks: [
@@ -205,6 +205,30 @@ async function sendLeadNotification(leadData) {
       },
       body: JSON.stringify(notification)
     });
+
+    // שליחת מייל למנהל
+    const mailOptions = {
+      from: `"${fromName}" <${zohoUser}>`,
+      to: process.env.ADMIN_EMAIL || 'vegoschat@gmail.com', // כתובת ברירת מחדל אם לא הוגדרה
+      subject: `ליד חדש - ${leadData.name}`,
+      html: `
+        <h2>ליד חדש מהצ'אטבוט</h2>
+        <p><strong>שם:</strong> ${leadData.name}</p>
+        <p><strong>אמצעי התקשרות:</strong> ${leadData.contact}</p>
+        <p><strong>כוונה:</strong> ${leadData.intent}</p>
+        <p><strong>ציון ליד:</strong> ${leadData.lead_score}</p>
+        <p><strong>תאריך:</strong> ${new Date().toLocaleString('he-IL')}</p>
+        
+        <h3>היסטוריית השיחה:</h3>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
+          ${leadData.conversation_history.map(msg => `
+            <p><strong>${msg.role}:</strong> ${msg.text}</p>
+          `).join('')}
+        </div>
+      `
+    };
+
+    await sendEmailWithRetry(mailOptions);
   } catch (error) {
     console.error('Error sending lead notification:', error);
   }

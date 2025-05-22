@@ -49,7 +49,8 @@ module.exports = async (req, res) => {
     const clientConfig = {
       client_id: clientId,
       system_prompt: data.system_prompt || "אתה עוזר כללי ועונה בעברית בצורה נעימה.", // Default system prompt
-      welcome_message: data.welcome_message || "היי אני vegos העוזר החכם שלך לכל מה שתצטרך" // Default welcome message
+      welcome_message: data.welcome_message || "היי אני vegos העוזר החכם שלך לכל מה שתצטרך",
+      onboarding_questions: data.onboarding_questions || [] // שאלות התחלתיות
       // Add other configurable fields here in the future
     };
 

@@ -9,34 +9,37 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Chat Widget: Using clientId from URL parameter:", client_id);
   } else {
     const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
-    const scriptClientId = widgetScriptElement?.dataset?.clientId; // Use optional chaining
+    const scriptClientId = widgetScriptElement?.dataset?.clientId;
     if (scriptClientId) {
       client_id = scriptClientId;
       console.log("Chat Widget: Using clientId from script tag:", client_id);
     } else {
       console.error("Chat Widget Error: Could not find clientId in URL parameter ('clientId') or in script tag ('vegos-chat-widget-script' with 'data-client-id'). Widget may not function correctly.");
-      // Optionally, prevent the widget from initializing further if client_id is critical
-      // return;
     }
   }
-  // --- End Get Client ID ---
 
-const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat'; // New n8n webhook
+  const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat';
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
-  const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead"; // New endpoint
-  const AUTO_OPEN_DELAY = 0; // Set to 0 to open immediately and show welcome message
-  const CLIENT_CONFIG_API_URL = "https://gpt-chat-live.vercel.app/api/client_config"; // New endpoint for client config
-  let welcomeMessage = ""; // Removed default welcome message
-  // Use the dynamic client_id for the history key
-  const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown'; // Fallback key if ID is missing
-  const LEAD_CAPTURE_KEYWORDS = ['נציג', 'פרטים', 'עזרה', 'contact', 'agent', 'representative', 'human', 'speak']; // Keywords to trigger lead capture
-  // Placeholder for API response indicating inability to answer - needs coordination with API
-  const API_CANNOT_ANSWER_RESPONSE = "אני מצטער, אין לי מידע על זה. האם תרצה להשאיר פרטים ונציג יחזור אליך?";
+  const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead";
+  const AUTO_OPEN_DELAY = 0;
+  const CLIENT_CONFIG_API_URL = "https://gpt-chat-live.vercel.app/api/client_config";
+  let welcomeMessage = null;
+  const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown';
+  const LEAD_CAPTURE_KEYWORDS = {
+    human_assistance: ['נציג', 'אנושי', 'אדם', 'human', 'agent'],
+    complex_queries: ['מורכב', 'מסובך', 'לא הבנתי', 'complex'],
+    pricing: ['מחיר', 'עלות', 'תמחור', 'price', 'cost'],
+    detailed_info: ['פרטים', 'מידע נוסף', 'details', 'more info']
+  };
 
   let chatHistory = [];
-  let leadCaptureState = 'idle'; // 'idle', 'askingName', 'askingContact'
+  let leadCaptureState = 'idle';
   let capturedName = '';
   let capturedContact = '';
+  let capturedContext = null;
+  let onboardingQuestions = [];
+  let onboardingStep = 0;
+  let onboardingActive = false;
 
   // --- CSS Injection for Pulse Animation ---
   const styleSheet = document.createElement("style");
@@ -170,10 +173,13 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
   });
 
   const sendButton = document.createElement("button");
+  sendButton.id = "send-message"; // Add ID for event listener
   sendButton.textContent = "שלח"; // Consider making text configurable
   Object.assign(sendButton.style, {
     backgroundColor: "#25D366", color: "white", border: "none", // Consider making colors configurable
-    borderRadius: "4px", padding: "8px 15px", cursor: "pointer"
+    borderRadius: "4px", padding: "8px 15px", cursor: "pointer",
+    minWidth: "60px", // Ensure minimum width for better touch targets
+    touchAction: "manipulation" // Improve touch handling
   });
 
   chatInputArea.appendChild(chatInput);
@@ -200,323 +206,396 @@ const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811
 
   // --- Load Chat History ---
   function loadHistory() {
-    // Only load history if client_id was found
     if (!client_id) return;
     const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
     if (savedHistory) {
       try {
         chatHistory = JSON.parse(savedHistory);
-        chatHistory.forEach(msg => appendMessage(msg.role, msg.text, false)); // Don't save again while loading
+        chatHistory.forEach(msg => appendMessage(msg.role, msg.text, false));
       } catch (e) {
         console.error("Error parsing chat history:", e);
-        localStorage.removeItem(CHAT_HISTORY_KEY); // Clear corrupted history
+        localStorage.removeItem(CHAT_HISTORY_KEY);
       }
     }
   }
-  // --- End Load Chat History ---
 
-  // --- Append Message Function (Handles DOM and History) ---
+  // --- Append Message Function ---
   function appendMessage(role, text, save = true) {
     const msg = document.createElement("div");
     msg.style.borderRadius = "5px";
     msg.style.padding = "8px";
     msg.style.marginBottom = "10px";
     msg.style.maxWidth = "80%";
-    msg.style.wordWrap = "break-word"; // Ensure long words wrap
-    msg.style.backgroundColor = role === "user" ? "#dcf8c6" : "#ececec"; // Consider configurable colors
-    msg.style.alignSelf = role === "user" ? "flex-start" : "flex-end"; // Align messages
+    msg.style.wordWrap = "break-word";
+    msg.style.backgroundColor = role === "user" ? "#dcf8c6" : "#ececec";
+    msg.style.alignSelf = role === "user" ? "flex-start" : "flex-end";
     msg.style.marginLeft = role === "user" ? "0" : "auto";
     msg.style.marginRight = role === "user" ? "auto" : "0";
     msg.textContent = text;
-    chatBody.appendChild(msg);
-    chatBody.scrollTop = chatBody.scrollHeight;
+    document.getElementById("vegos-chat-body").appendChild(msg);
+    document.getElementById("vegos-chat-body").scrollTop = document.getElementById("vegos-chat-body").scrollHeight;
 
-    // Only save if client_id exists and save flag is true
     if (client_id && save) {
-      // Add message to history array only if not in lead capture asking phase
       if (leadCaptureState === 'idle' || role === 'user') {
-          chatHistory.push({ role, text });
-          // Limit history to the last 10 messages
-          const MAX_HISTORY_LENGTH = 10;
-          if (chatHistory.length > MAX_HISTORY_LENGTH) {
-              chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY_LENGTH);
-          }
-          // Save updated history to localStorage
-          try {
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
-          } catch (e) {
-            console.error("Error saving chat history:", e);
-          }
+        chatHistory.push({ role, text });
+        const MAX_HISTORY_LENGTH = 10;
+        if (chatHistory.length > MAX_HISTORY_LENGTH) {
+          chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY_LENGTH);
+        }
+        try {
+          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+        } catch (e) {
+          console.error("Error saving chat history:", e);
+        }
       }
     }
-    return msg; // Return the message element for potential updates
+    return msg;
   }
-  // --- End Append Message Function ---
 
   // --- Send Lead via Fetch Function ---
   async function sendLeadViaFetch() {
-      if (!client_id) {
-          console.error("Cannot send lead: client_id is missing.");
-          appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1).");
-          return;
-      }
-      console.log("Preparing to send lead via fetch for client:", client_id, { name: capturedName, contact: capturedContact });
-
-      // const n8nWebhookUrl = 'https://chatvegosai.app.n8n.cloud/webhook/ea7535a1-31d7-4cca-9457-35dfae767ced'; // Remove or comment out the old URL
-
-// --- Send Message to n8n Webhook ---
-  async function sendToN8nWebhook(message, clientId) {
-    if (!clientId) {
-      console.error("Cannot send to n8n: client_id is missing.");
-      return; // Don't proceed without clientId
-    }
-    if (!message) {
-        console.error("Cannot send to n8n: message is empty.");
-        return; // Don't send empty messages
+    if (!client_id) {
+      console.error("Cannot send lead: client_id is missing.");
+      appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1).");
+      return;
     }
 
-    console.log(`Sending message to n8n for client ${clientId}`);
-    const payload = {
-      message: message,
-      clientId: clientId
+    const leadData = {
+      name: capturedName,
+      contact: capturedContact,
+      clientId: client_id,
+      context: capturedContext,
+      history: chatHistory,
+      leadScore: calculateLeadScore(capturedContext),
+      timestamp: new Date().toISOString()
     };
 
     try {
-      const response = await fetch(N8N_CHAT_WEBHOOK_URL, {
+      const response = await fetch(LEAD_CAPTURE_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
-        mode: 'cors' // Important for cross-origin requests
+        body: JSON.stringify(leadData)
       });
 
       if (!response.ok) {
-        // Log error but don't bother the user, it's a background task
-        console.error(`Error sending message to n8n webhook: HTTP status ${response.status}`);
-        try {
-            const errorBody = await response.text();
-            console.error("n8n webhook error body:", errorBody);
-        } catch(e) {
-            console.error("Could not read n8n error response body.");
-        }
-      } else {
-        console.log("Message sent successfully to n8n webhook.");
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
+      resetLeadCaptureState();
     } catch (error) {
-      console.error("Network or other error sending message to n8n webhook:", error);
+      console.error("Error sending lead:", error);
+      appendMessage('bot', "אירעה שגיאה בשליחת הפרטים. נסה שוב מאוחר יותר.");
     }
   }
-  // sendToN8nWebhook(text, client_id); // Send message to n8n webhook - מבוטל כי text לא מוגדר כאן
-      const leadData = {
-          name: capturedName,
-          contact: capturedContact,
-          clientId: client_id,
-          history: chatHistory // Send history array directly
-      };
 
-      try {
-          const response = await fetch(LEAD_CAPTURE_API_URL, { // Use the correct API URL constant
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(leadData), // שלח כ-JSON
-              mode: 'cors' // חשוב לבקשות Cross-Origin
-          });
-
-          if (!response.ok) {
-               // נסה לקרוא את גוף השגיאה אם אפשר
-               let errorBody = '';
-               try {
-                   errorBody = await response.text();
-               } catch (e) {}
-               console.error(`Error sending lead: HTTP status ${response.status}`, errorBody);
-               // הודעה כללית למשתמש, כי ייתכן שהשגיאה מהשרת לא רלוונטית לו
-               appendMessage('bot', "אירעה שגיאה בשליחת הפרטים (קוד: L2). נסה שוב מאוחר יותר.");
-          } else {
-               console.log("Lead sent successfully via fetch.");
-               // Reset captured lead info only on success
-               capturedName = '';
-               capturedContact = '';
-               // הצג הודעת הצלחה (כבר נעשה קודם)
-               // appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
-          }
-
-      } catch (error) {
-          console.error("Error sending lead via fetch:", error);
-          // יכול להיות כשל ברשת או בעיה אחרת
-          appendMessage('bot', "אירעה שגיאה בשליחת הפרטים (קוד: L3). בדוק את חיבור האינטרנט ונסה שוב.");
-      }
-  }
-  // --- End Send Lead via Fetch Function ---
-
-
-  // --- Send Message Function (Handles normal chat and lead capture flow) ---
-  async function sendMessage() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-
-    // Only proceed if client_id is available
-    if (!client_id) {
-        appendMessage('bot', "אירעה שגיאה בהגדרת הצ'אט (קוד: M1).", false);
-        return;
-    }
-
-    appendMessage("user", text); // Display user message and save it
-    const currentInput = text.toLowerCase();
-    chatInput.value = ""; // Clear input field immediately
-
-    // --- Lead Capture Flow ---
-    if (leadCaptureState === 'askingName') {
-        capturedName = text;
-        leadCaptureState = 'askingContact';
-        appendMessage('bot', "תודה, " + capturedName + ". מה כתובת המייל או מספר הטלפון שלך ליצירת קשר?");
-        return; // Wait for contact info
-    }
-
-    if (leadCaptureState === 'askingContact') {
-        capturedContact = text;
-        leadCaptureState = 'idle'; // End capture flow
-        appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
-        sendLeadViaFetch(); // קרא לפונקציה החדשה
-        return; // End interaction after capturing lead
-    }
-    // --- End Lead Capture Flow ---
-
-    // Check for lead capture keywords if not already in the flow
-    const triggerLeadCapture = LEAD_CAPTURE_KEYWORDS.some(keyword => currentInput.includes(keyword));
-
-    if (triggerLeadCapture) {
-        leadCaptureState = 'askingName';
-        appendMessage('bot', "בטח, אשמח לעזור בכך. מה שמך?");
-        return; // Wait for name
-    }
-
-    // --- Normal Chat Flow ---
-    const botMsgElement = appendMessage("bot", "..."); // Display placeholder and save it
-    const placeholderIndex = chatHistory.length - 1; // Index of the placeholder message
-
+  // --- Lead Capture Flow with AI involvement ---
+  async function handleLeadCaptureStep(userInput) {
+    // שלח את התשובה של המשתמש ל-AI יחד עם ההקשר
     try {
+      showLoading();
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, client_id: client_id }) // Pass dynamic client_id
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userInput,
+          client_id: client_id,
+          lead_capture_state: leadCaptureState,
+          captured_name: capturedName,
+          captured_contact: capturedContact,
+          context: capturedContext,
+          history: chatHistory,
+          lead_capture: true // דגל שמדובר בתהליך ליד
+        })
       });
-
-      if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-      const reply = data.reply || "לא התקבלה תשובה";
-      botMsgElement.textContent = reply; // Update the placeholder message element in DOM
+      hideLoading();
 
-      // Update the placeholder message in history
-      if (placeholderIndex >= 0 && chatHistory[placeholderIndex]?.role === 'bot') {
-          chatHistory[placeholderIndex].text = reply;
-          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory)); // Save updated history
+      // ניהול זרימת הליד לפי תשובת ה-AI
+      if (data.lead_capture_cancelled) {
+        appendMessage('bot', data.reply || 'אין בעיה, לא אשמור את פרטיך. אם תרצה עזרה נוספת – אני כאן!');
+        resetLeadCaptureState();
+        return;
       }
-
-      // TODO: Check if reply indicates inability to answer and trigger lead capture
-      // if (reply === API_CANNOT_ANSWER_RESPONSE) {
-      //     leadCaptureState = 'askingName';
-      //     appendMessage('bot', "בטח, אשמח לעזור בכך. מה שמך?");
-      // }
-
-    } catch (err) {
-      console.error("שגיאה בשליחה:", err);
-      const errorText = "שגיאה בשליחה לשרת.";
-      botMsgElement.textContent = errorText; // Update the placeholder message element in DOM
-       // Update the placeholder message in history with error
-       if (placeholderIndex >= 0 && chatHistory[placeholderIndex]?.role === 'bot') {
-          chatHistory[placeholderIndex].text = errorText;
-          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory)); // Save updated history
+      if (leadCaptureState === 'askingName') {
+        if (data.captured_name) {
+          capturedName = data.captured_name;
+          leadCaptureState = 'askingContact';
+          appendMessage('bot', data.reply || 'תודה! אשמח לקבל מספר טלפון או כתובת אימייל ליצירת קשר.');
+        } else {
+          appendMessage('bot', data.reply || 'לא הבנתי, אשמח לשמוע את שמך.');
+        }
+        return;
       }
-    } finally {
-        chatBody.scrollTop = chatBody.scrollHeight; // Scroll down after response/error
+      if (leadCaptureState === 'askingContact') {
+        if (data.captured_contact) {
+          capturedContact = data.captured_contact;
+          await sendLeadViaFetch();
+          return;
+        } else {
+          appendMessage('bot', data.reply || 'לא קיבלתי מספר טלפון או אימייל תקין. אפשר לנסות שוב?');
+        }
+        return;
+      }
+    } catch (error) {
+      hideLoading();
+      appendMessage('bot', 'מצטער, אירעה שגיאה. אנא נסה שוב.');
     }
   }
-  // --- End Send Message Function ---
+
+  // --- עדכון שליחת הודעה ---
+  async function sendMessage() {
+    const messageInput = document.getElementById('vegos-chat-input');
+    const message = messageInput.value.trim();
+    if (!message) return;
+    appendMessage("user", message);
+    messageInput.value = '';
+
+    // אם אנחנו בתהליך onboarding
+    if (onboardingActive && onboardingQuestions.length > 0 && onboardingStep < onboardingQuestions.length) {
+      // אפשר לשמור את התשובה בהיסטוריה או לשלוח ל-AI
+      // כרגע רק מציגים את השאלה הבאה
+      onboardingStep++;
+      if (onboardingStep < onboardingQuestions.length) {
+        appendMessage('bot', onboardingQuestions[onboardingStep]);
+      } else {
+        onboardingActive = false;
+      }
+      return;
+    }
+
+    // אם אנחנו בתהליך ליד – נשלח ל-AI לטיפול חכם
+    if (leadCaptureState === 'askingName' || leadCaptureState === 'askingContact') {
+      await handleLeadCaptureStep(message);
+      return;
+    }
+
+    try {
+      showLoading();
+      const intentResponse = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          client_id: client_id,
+          analyze_intent: true,
+          history: chatHistory
+        })
+      });
+      const intentData = await intentResponse.json();
+      hideLoading();
+      if (intentData.should_capture_lead) {
+        startLeadCaptureFlow(intentData);
+        return;
+      }
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          client_id: client_id,
+          history: chatHistory
+        })
+      });
+      const data = await response.json();
+      appendMessage('bot', data.reply);
+    } catch (error) {
+      hideLoading();
+      appendMessage('bot', 'מצטער, אירעה שגיאה. אנא נסה שוב.');
+    }
+  }
 
   // --- Event Listeners ---
-  chatButton.addEventListener("click", () => {
-    if (chatWindow.style.display === "none" || !chatWindow.style.display) {
-      chatWindow.style.display = "flex";
-      chatButton.classList.remove('chat-button-pulse'); // Stop pulsing when open
-    } else {
-      chatWindow.style.display = "none";
-      chatButton.classList.add('chat-button-pulse'); // Start pulsing again when closed
-    }
-  });
-
-  document.getElementById("close-chat").addEventListener("click", () => {
-    chatWindow.style.display = "none";
-    chatButton.classList.add('chat-button-pulse'); // Start pulsing again when closed
-  });
-
-  sendButton.addEventListener("click", sendMessage);
-  chatInput.addEventListener("keypress", e => {
-    if (e.key === "Enter") sendMessage();
-  });
-  // --- End Event Listeners ---
-
-  // --- Auto Open and Welcome Message ---
-  function openChatProactively() {
-      // Only open if client_id was found and auto-open is enabled
-      if (!client_id || AUTO_OPEN_DELAY === null) return;
-      // Check if the chat window is currently hidden
-      if (chatWindow.style.display === 'none') {
-          chatWindow.style.display = 'flex'; // Open the window
-          chatButton.classList.remove('chat-button-pulse'); // Stop pulsing
-          // Only add welcome message if it's set and history is empty or last message wasn't the welcome
-          if (welcomeMessage && (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== welcomeMessage)) {
-             appendMessage('bot', welcomeMessage);
-          }
+  const chatBtn = document.getElementById("vegos-chat-button");
+  if (chatBtn) {
+    chatBtn.addEventListener("click", () => {
+      const chatWindow = document.getElementById("vegos-chat-window");
+      const chatButton = document.getElementById("vegos-chat-button");
+      if (chatWindow && chatButton) {
+        if (chatWindow.style.display === "none" || !chatWindow.style.display) {
+          chatWindow.style.display = "flex";
+          chatButton.classList.remove('chat-button-pulse');
+        } else {
+          chatWindow.style.display = "none";
+          chatButton.classList.add('chat-button-pulse');
+        }
       }
+    });
   }
 
-  // Load history and fetch client config before setting the timeout
+  const closeBtn = document.getElementById("close-chat");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      const chatWindow = document.getElementById("vegos-chat-window");
+      const chatButton = document.getElementById("vegos-chat-button");
+      if (chatWindow && chatButton) {
+        chatWindow.style.display = "none";
+        chatButton.classList.add('chat-button-pulse');
+      }
+    });
+  }
+
+  // Update send button event listener
+  const sendBtn = document.getElementById("send-message");
+  if (sendBtn) {
+    sendBtn.addEventListener("click", function(e) {
+      e.preventDefault(); // Prevent default button behavior
+      sendMessage();
+    });
+  }
+
+  // Update input event listener
+  const chatInputEl = document.getElementById("vegos-chat-input");
+  if (chatInputEl) {
+    chatInputEl.addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault(); // Prevent default enter behavior
+        sendMessage();
+      }
+    });
+  }
+
+  const minimizeBtn = document.getElementById("minimize-chat");
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener("click", function() {
+      const chatWidget = document.getElementById("vegos-chat-window");
+      const minimizeButton = document.getElementById("minimize-chat");
+      if (chatWidget && minimizeButton) {
+        if (chatWidget.classList.contains('minimized')) {
+          chatWidget.classList.remove('minimized');
+          minimizeButton.textContent = '−';
+        } else {
+          chatWidget.classList.add('minimized');
+          minimizeButton.textContent = '+';
+        }
+      }
+    });
+  }
+
+  // --- Load History and Fetch Config ---
   loadHistory();
-  fetchClientConfig(); // Fetch client configuration
+  fetchClientConfig();
 
-  // Only set timeout if AUTO_OPEN_DELAY is not null
-// --- End Auto Open ---
-
-// --- Fetch Client Configuration ---
+  // --- Fetch Client Configuration ---
   async function fetchClientConfig() {
-      if (!client_id) {
-          console.error("Cannot fetch client config: client_id is missing.");
-          // Even if client_id is missing, we might still want to open the chat with default/empty message
-          if (AUTO_OPEN_DELAY !== null) { // Check delay here too
-              setTimeout(openChatProactively, AUTO_OPEN_DELAY);
-          }
-          return;
+    if (!client_id) {
+      console.error("Cannot fetch client config: client_id is missing.");
+      if (AUTO_OPEN_DELAY !== null) {
+        setTimeout(openChatProactively, AUTO_OPEN_DELAY);
       }
-      try {
-          const response = await fetch(`${CLIENT_CONFIG_API_URL}?client_id=${encodeURIComponent(client_id)}`);
-          if (!response.ok) {
-              console.error(`Error fetching client config: HTTP status ${response.status}`);
-              // If fetching fails, welcomeMessage remains "" (default)
-          } else {
-              const config = await response.json();
-              if (config.welcome_message) {
-                  welcomeMessage = config.welcome_message; // Update welcome message if found
-                  console.log("Using client-specific welcome message:", welcomeMessage);
-              } else {
-                  console.log("No client-specific welcome message found, using default.");
-              }
-          }
-      } catch (error) {
-          console.error("Error fetching client config:", error);
-          // If fetching fails, welcomeMessage remains "" (default)
-      } finally {
-          // Call openChatProactively AFTER fetching config (or attempting to)
-          if (AUTO_OPEN_DELAY !== null) { // Check delay here too
-              setTimeout(openChatProactively, AUTO_OPEN_DELAY);
-          }
+      return;
+    }
+    try {
+      const response = await fetch(`${CLIENT_CONFIG_API_URL}?client_id=${encodeURIComponent(client_id)}`);
+      if (!response.ok) {
+        console.error(`Error fetching client config: HTTP status ${response.status}`);
+      } else {
+        const config = await response.json();
+        if (config.welcome_message) {
+          welcomeMessage = config.welcome_message;
+          console.log("Using client-specific welcome message:", welcomeMessage);
+        } else {
+          console.log("No client-specific welcome message found, using default.");
+        }
+        if (Array.isArray(config.onboarding_questions) && config.onboarding_questions.length > 0) {
+          onboardingQuestions = config.onboarding_questions;
+          onboardingActive = true;
+          onboardingStep = 0;
+        }
       }
+    } catch (error) {
+      console.error("Error fetching client config:", error);
+    } finally {
+      if (AUTO_OPEN_DELAY !== null) {
+        setTimeout(openChatProactively, AUTO_OPEN_DELAY);
+      }
+    }
   }
-  // --- End Fetch Client Configuration ---
-  // Trigger deployment marker
+
+  // --- Auto Open Chat ---
+  function openChatProactively() {
+    if (!client_id || AUTO_OPEN_DELAY === null) return;
+    const chatWindow = document.getElementById("vegos-chat-window");
+    const chatButton = document.getElementById("vegos-chat-button");
+    if (chatWindow.style.display === 'none') {
+      chatWindow.style.display = 'flex';
+      chatButton.classList.remove('chat-button-pulse');
+      if (welcomeMessage && (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].text !== welcomeMessage)) {
+        appendMessage('bot', welcomeMessage);
+      }
+      // אם יש שאלות התחלתיות, נתחיל אותן
+      if (onboardingActive && onboardingQuestions.length > 0) {
+        setTimeout(() => {
+          appendMessage('bot', onboardingQuestions[onboardingStep]);
+        }, 500);
+      }
+    }
+  }
+
+  // --- Lead Capture Functions ---
+  function startLeadCaptureFlow(intentData) {
+    capturedContext = {
+      intent: intentData.intent,
+      confidence: intentData.confidence,
+      conversation_history: chatHistory
+    };
+    
+    leadCaptureState = 'askingName';
+    appendMessage('bot', intentData.suggested_response);
+  }
+
+  function resetLeadCaptureState() {
+    leadCaptureState = 'idle';
+    capturedName = '';
+    capturedContact = '';
+    capturedContext = null;
+  }
+
+  function calculateLeadScore(leadData) {
+    if (!leadData) return 0;
+    
+    let score = 0;
+    score += leadData.confidence * 0.5;
+    
+    const intentScores = {
+      pricing: 30,
+      complex_queries: 25,
+      human_assistance: 20,
+      detailed_info: 15,
+      general_inquiry: 10
+    };
+    
+    score += intentScores[leadData.intent] || 0;
+    
+    const conversationLength = leadData.conversation_history?.length || 0;
+    score += Math.min(conversationLength * 2, 20);
+    
+    return Math.min(score, 100);
+  }
+
+  // --- UI Helper Functions ---
+  function showLoading() {
+    const loadingElement = document.createElement("div");
+    loadingElement.className = "loading";
+    loadingElement.id = "loading-indicator";
+    document.getElementById("vegos-chat-body").appendChild(loadingElement);
+  }
+
+  function hideLoading() {
+    const loadingElement = document.getElementById("loading-indicator");
+    if (loadingElement) {
+      loadingElement.classList.add('fade-out');
+      setTimeout(() => {
+        loadingElement.remove();
+      }, 300);
+    }
+  }
 });
