@@ -59,9 +59,10 @@ if (zohoUser && zohoPass) {
       pass: zohoPass,
     },
   });
-  console.log("Nodemailer configured with Zoho Mail SMTP.");
+  console.log("Nodemailer configured with Zoho Mail SMTP. Transporter is ready."); // Added log
 } else {
   console.error("Zoho Mail credentials (ZOHO_USER, ZOHO_PASS) are not configured. Email sending will fail.");
+  console.log("Nodemailer transporter NOT configured due to missing credentials."); // Added log
 }
 // --- End Nodemailer Configuration ---
 
@@ -156,6 +157,7 @@ export default async function handler(req, res) {
 
 // פונקציה לשליחת התראה למנהל
 async function sendLeadNotification(leadData) {
+  console.log("Attempting to send lead notification..."); // Added log
   try {
     // שליחת התראה ל-Slack
     const notification = {
@@ -228,6 +230,7 @@ async function sendLeadNotification(leadData) {
       `
     };
 
+    console.log("Calling sendEmailWithRetry..."); // Added log
     await sendEmailWithRetry(mailOptions);
   } catch (error) {
     console.error('Error sending lead notification:', error);
