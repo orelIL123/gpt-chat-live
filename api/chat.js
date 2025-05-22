@@ -85,7 +85,7 @@ async function analyzeIntent(message, history) {
   // ניתוח בסיסי של הכוונה
   const intent = determineIntent(message);
   const confidence = calculateConfidence(message, intent);
-  const shouldCaptureLead = shouldTriggerLeadCapture(intent, confidence, history);
+  const shouldCaptureLead = shouldTriggerLeadCapture(message, intent, confidence, history);
 
   return {
     should_capture_lead: shouldCaptureLead,
@@ -139,9 +139,34 @@ function calculateConfidence(message, intent) {
 }
 
 // פונקציה לקביעה האם יש להפעיל לכידת ליד
-function shouldTriggerLeadCapture(intent, confidence, history) {
-  // רק אם הכוונה היא לבקשת נציג, להפעיל ליד
-  return intent === 'human_assistance';
+function shouldTriggerLeadCapture(message, intent, confidence, history) {
+  // סף ביטחון מינימלי להפעלת לכידת ליד
+  const MIN_CONFIDENCE = 70; // ניתן להתאים את הסף הזה לפי הצורך
+
+  // 1. בדוק אם הכוונה שזוהתה היא "human_assistance" ורמת הביטחון מספיק גבוהה
+  if (intent === 'human_assistance' && confidence >= MIN_CONFIDENCE) {
+    // 2. בדוק את היסטוריית השיחה - האם התשובה האחרונה של ה-AI הציעה עזרה אנושית?
+    if (history && history.length > 0) {
+      const lastMessage = history[history.length - 1];
+      // ודא שההודעה האחרונה היא מהמודל (ה-AI) ויש לה תוכן טקסטואלי
+      if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {
+        const lastModelText = lastMessage.parts[0].text.toLowerCase();
+        // בדוק אם הטקסט של התשובה האחרונה של ה-AI מכיל ביטויים המעידים על הצעת עזרה אנושית
+        // (מבוסס על התשובה המוצעת בפונקציה generateSuggestedResponse)
+        if (lastModelText.includes('אשמח לחבר אותך עם נציג') || lastModelText.includes('האם זה מתאים לך?')) {
+           // 3. אם הכוונה היא עזרה אנושית, הביטחון גבוה, וה-AI הציע עזרה אנושית, הפעל לכידת ליד.
+           // אנחנו מניחים שאם התנאים הללו מתקיימים, התשובה הנוכחית של המשתמש היא אישור להצעה.
+           return true;
+        }
+      }
+    }
+    // אם הכוונה היא עזרה אנושית והביטחון גבוה, אך ה-AI לא הציע עזרה אנושית בהודעה הקודמת,
+    // או שאין היסטוריה רלוונטית, אל תפעיל לכידת ליד.
+    return false;
+  }
+
+  // אם הכוונה אינה עזרה אנושית או שהביטחון נמוך מהסף, אל תפעיל לכידת ליד.
+  return false;
 }
 
 // פונקציה ליצירת תשובה מוצעת
