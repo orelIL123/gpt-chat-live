@@ -128,21 +128,11 @@
             </table>
         </div>
 
-        <div id="admin-commands">
-            <h2>פקודות אדמין</h2>
-            <div>
-                <label for="admin-prompt">הנחיה ל-AI לשליחת מייל:</label><br>
-                <textarea id="admin-prompt" placeholder="לדוגמה: שלח מייל תודה ללקוח ותגיד שנחזור אליו בקרוב בנוגע להזמנה."></textarea>
-            </div>
-            <button id="send-command-button" disabled>שלח פקודה ל-n8n</button>
-            <p id="command-status" style="margin-top: 10px;"></p>
-        </div>
     </div>
 
 
     <script>
         // --- Configuration ---
-        const ADMIN_COMMAND_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat'; // <-- REPLACE with the ACTUAL URL of your NEW n8n webhook for admin commands!
         let db; // Firebase Firestore instance
         let selectedClientId = null;
         let selectedClientEmail = null; // To store the email for sending commands
@@ -152,9 +142,6 @@
         const clientDetailsDiv = document.getElementById('client-details');
         const currentClientIdDisplay = document.getElementById('current-client-id-display');
         const messageTableBody = document.getElementById('message-table-body');
-        const adminPromptTextarea = document.getElementById('admin-prompt');
-        const sendCommandButton = document.getElementById('send-command-button');
-        const commandStatusP = document.getElementById('command-status');
 
         // --- Firebase Initialization ---
         function initializeFirebase() {
@@ -224,16 +211,11 @@
             targetLi.classList.add('selected');
 
             currentClientIdDisplay.textContent = selectedClientId;
-            sendCommandButton.disabled = false; // Enable command button
-            commandStatusP.textContent = ''; // Clear previous status
-            adminPromptTextarea.value = ''; // Clear prompt
-
-            loadClientDetails(selectedClientId);
-            loadClientMessages(selectedClientId);
+            loadClientDetailsAndMessages(selectedClientId);
         }
 
-        // --- Load Client Details ---
-        async function loadClientDetails(clientId) {
+        // --- Load Client Details and Messages ---
+        async function loadClientDetailsAndMessages(clientId) {
              if (!db) return;
              clientDetailsDiv.innerHTML = '<p class="loading">טוען פרטי לקוח...</p>';
              try {
@@ -258,8 +240,9 @@
                  console.error("Error loading client details:", error);
                  clientDetailsDiv.innerHTML = `<p class="error">שגיאה בטעינת פרטי לקוח: ${error.message}</p>`;
              }
-        }
 
+             loadClientMessages(clientId);
+        }
 
         // --- Load Client Messages (from 'leads' collection) ---
         async function loadClientMessages(clientId) {
@@ -300,80 +283,6 @@
                 messageTableBody.innerHTML = `<tr><td colspan="3" class="error">שגיאה בטעינת הודעות: ${error.message}</td></tr>`;
             }
         }
-
-        // --- Send Admin Command ---
-        async function sendAdminCommand() {
-            const adminPrompt = adminPromptTextarea.value.trim();
-
-            if (!selectedClientId) {
-                commandStatusP.textContent = 'שגיאה: יש לבחור לקוח.';
-                commandStatusP.className = 'error';
-                return;
-            }
-            if (!selectedClientEmail) {
-                 commandStatusP.textContent = 'שגיאה: לא נמצאה כתובת מייל לשליחה עבור לקוח זה (בדוק הגדרות ב-Firebase).';
-                 commandStatusP.className = 'error';
-                 return;
-            }
-             if (!adminPrompt) {
-                commandStatusP.textContent = 'שגיאה: יש להזין הנחיה ל-AI.';
-                commandStatusP.className = 'error';
-                return;
-            }
-            if (ADMIN_COMMAND_WEBHOOK_URL === 'YOUR_NEW_N8N_ADMIN_COMMAND_WEBHOOK_URL') {
-                 commandStatusP.textContent = 'שגיאה: יש להגדיר את כתובת ה-Webhook הנכונה בקוד.';
-                 commandStatusP.className = 'error';
-                 return;
-            }
-
-
-            commandStatusP.textContent = 'שולח פקודה ל-n8n...';
-            commandStatusP.className = 'loading';
-            sendCommandButton.disabled = true;
-
-            const payload = {
-                clientId: selectedClientId,
-                adminPrompt: adminPrompt,
-                recipientEmail: selectedClientEmail
-                // TODO: Consider adding message history here if the n8n AI needs it
-                // history: [...]
-            };
-
-            try {
-                const response = await fetch(ADMIN_COMMAND_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    // Try to get error message from n8n if possible
-                    let errorMsg = `שגיאת שרת מ-n8n: ${response.status}`;
-                    try {
-                        const errorData = await response.json();
-                        errorMsg += ` - ${errorData.message || JSON.stringify(errorData)}`;
-                    } catch (e) { /* Ignore if response is not JSON */ }
-                    throw new Error(errorMsg);
-                }
-
-                // Assuming n8n returns success status (e.g., 200 OK)
-                commandStatusP.textContent = 'הפקודה נשלחה בהצלחה ל-n8n!';
-                commandStatusP.className = 'success'; // Add a CSS class for success styling if needed
-                adminPromptTextarea.value = ''; // Clear prompt on success
-
-            } catch (error) {
-                console.error("Error sending admin command:", error);
-                commandStatusP.textContent = `שגיאה בשליחת פקודה: ${error.message}`;
-                commandStatusP.className = 'error';
-            } finally {
-                sendCommandButton.disabled = false; // Re-enable button
-            }
-        }
-
-        // --- Event Listeners ---
-        sendCommandButton.addEventListener('click', sendAdminCommand);
 
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {

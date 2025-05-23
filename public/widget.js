@@ -18,7 +18,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  const N8N_CHAT_WEBHOOK_URL = 'https://chatvegosai.app.n8n.cloud/webhook/4a467811-bd9e-4b99-a145-3672a6ae6ed2/chat';
   const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
   const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead";
   const AUTO_OPEN_DELAY = 0;
@@ -203,6 +202,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.body.appendChild(chatButton);
   document.body.appendChild(chatWindow);
+  console.log("Client: After appending chat elements."); // Added log
 
   // --- Load Chat History ---
   function loadHistory() {
@@ -254,6 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Send Lead via Fetch Function ---
   async function sendLeadViaFetch() {
+    console.log("Client: Entering sendLeadViaFetch. Preparing to call /api/capture_lead."); // Added log
     if (!client_id) {
       console.error("Cannot send lead: client_id is missing.");
       appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1).");
@@ -290,9 +291,11 @@ document.addEventListener("DOMContentLoaded", function () {
       appendMessage('bot', "אירעה שגיאה בשליחת הפרטים. נסה שוב מאוחר יותר.");
     }
   }
+  console.log("Client: After sendLeadViaFetch function definition."); // Added log
 
   // --- Lead Capture Flow with AI involvement ---
   async function handleLeadCaptureStep(userInput) {
+    console.log(`Client: handleLeadCaptureStep called. Current state: ${leadCaptureState}, Input: "${userInput}"`); // Modified log for clarity
     // שלח את התשובה של המשתמש ל-AI יחד עם ההקשר
     try {
       showLoading();
@@ -323,6 +326,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       if (leadCaptureState === 'askingName') {
         if (data.captured_name) {
+          console.log(`Client: Captured name: ${data.captured_name}. Moving to askingContact state.`); // Added log
           capturedName = data.captured_name;
           leadCaptureState = 'askingContact';
           appendMessage('bot', data.reply || 'תודה! אשמח לקבל מספר טלפון או כתובת אימייל ליצירת קשר.');
@@ -332,7 +336,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
       if (leadCaptureState === 'askingContact') {
+        console.log("Client: Received response from /api/chat during askingContact state:", data); // Added log
         if (data.captured_contact) {
+          console.log(`Client: Captured contact: ${data.captured_contact}. Calling sendLeadViaFetch.`); // Added log
           capturedContact = data.captured_contact;
           await sendLeadViaFetch();
           return;
@@ -346,9 +352,11 @@ document.addEventListener("DOMContentLoaded", function () {
       appendMessage('bot', 'מצטער, אירעה שגיאה. אנא נסה שוב.');
     }
   }
+  console.log("Client: After handleLeadCaptureStep function definition."); // Added log
 
   // --- עדכון שליחת הודעה ---
   async function sendMessage() {
+    console.log("Client: sendMessage function started."); // Added log
     const messageInput = document.getElementById('vegos-chat-input');
     const message = messageInput.value.trim();
     if (!message) return;
@@ -367,6 +375,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       return;
     }
+    console.log(`Client: sendMessage - Checking leadCaptureState: ${leadCaptureState}`); // Added log
 
     // אם אנחנו בתהליך ליד – נשלח ל-AI לטיפול חכם
     if (leadCaptureState === 'askingName' || leadCaptureState === 'askingContact') {
@@ -391,6 +400,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const intentData = await intentResponse.json();
       hideLoading();
       if (intentData.should_capture_lead) {
+        console.log("Client: Intent analysis returned should_capture_lead = true. Starting lead capture flow."); // Added log
         startLeadCaptureFlow(intentData);
         return;
       }
@@ -412,7 +422,9 @@ document.addEventListener("DOMContentLoaded", function () {
       appendMessage('bot', 'מצטער, אירעה שגיאה. אנא נסה שוב.');
     }
   }
+  console.log("Client: After sendMessage function definition."); // Added log
 
+  console.log("Client: Reaching Event Listeners section."); // Added log
   // --- Event Listeners ---
   const chatBtn = document.getElementById("vegos-chat-button");
   if (chatBtn) {
@@ -450,6 +462,9 @@ document.addEventListener("DOMContentLoaded", function () {
       e.preventDefault(); // Prevent default button behavior
       sendMessage();
     });
+    console.log("Client: Send button event listener attached."); // Added log
+  } else {
+    console.error("Client: Send button element (#send-message) not found."); // Added log
   }
 
   // Update input event listener
@@ -461,6 +476,9 @@ document.addEventListener("DOMContentLoaded", function () {
         sendMessage();
       }
     });
+    console.log("Client: Input field keypress event listener attached."); // Added log
+  } else {
+    console.error("Client: Input field element (#vegos-chat-input) not found."); // Added log
   }
 
   const minimizeBtn = document.getElementById("minimize-chat");
@@ -542,6 +560,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Lead Capture Functions ---
   function startLeadCaptureFlow(intentData) {
+    console.log("Client: Entering startLeadCaptureFlow."); // Added log
     capturedContext = {
       intent: intentData.intent,
       confidence: intentData.confidence,

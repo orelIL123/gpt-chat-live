@@ -69,13 +69,21 @@ directive @auth(
 Require that this mutation always run in a DB transaction.
 
 Mutations with `@transaction` are guaranteed to either fully succeed or fully
-fail. If any of the fields within the transaction fails, the entire transaction
-is rolled back. From a client standpoint, any failure behaves as if the entire
-request had failed with a request error and execution had not begun.
+fail. Upon the first error in a transaction (either an execution error or failed
+`@check`), the transaction will be rolled back. In the GraphQL response, all
+fields within the transaction will be `null`, each with an error raised.
+
+- Fields that have been already evaluated will be nullified due to the rollback
+  and a "(rolled back)" error will be reported on each of them.
+- The execution error or failed `@check` will be reported on the current field.
+- Subsequent fields will not be executed. An `(aborted)` error will be reported
+  on each subsequent field.
 
 Mutations without `@transaction` would execute each root field one after
-another in sequence. It surfaces any errors as partial [field errors](https://spec.graphql.org/October2021/#sec-Errors.Field-errors),
-but not impacts the subsequent executions.
+another in sequence. They surface any errors as partial
+[field errors](https://spec.graphql.org/October2021/#sec-Errors.Field-errors),
+but does not impact the execution of subsequent fields. However, failed
+`@check`s still terminate the entire operation.
 
 The `@transaction` directive cannot be added to queries for now.
 Currently, queries cannot fail partially, the response data is not guaranteed
