@@ -129,24 +129,40 @@ function calculateConfidence(message, intent) {
 
 // פונקציה לקביעה האם יש להפעיל לכידת ליד
 function shouldTriggerLeadCapture(message, intent, confidence, history) {
-  const MIN_CONFIDENCE = 70;
+  const MIN_CONFIDENCE = 50;
 
-  console.log(`[CHAT] shouldTriggerLeadCapture called with: message="${message}", intent="${intent}", confidence=${confidence}`); // לוג חדש לכניסה לפונקציה
+  console.log(`[CHAT] shouldTriggerLeadCapture called with: message="${message}", intent="${intent}", confidence=${confidence}`);
 
-  if (intent === 'human_assistance' && confidence >= MIN_CONFIDENCE) {
-    if (history && history.length > 0) {
-      const lastMessage = history[history.length - 1];
-      if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {
-        const lastModelText = lastMessage.parts[0].text.toLowerCase();
-        console.log(`[CHAT] Last AI message text: "${lastModelText}"`); // לוג חדש לתוכן הודעת ה-AI האחרונה
-        if (lastModelText.includes('אשמח לחבר אותך עם נציג') || lastModelText.includes('האם זה מתאים לך?')) {
-           console.log("[CHAT] Lead capture triggered: AI offered human assistance and user confirmed."); // לוג על הפעלת לכידת ליד
-           return true;
-        }
+  // Check for direct lead capture requests
+  if (containsAny(message.toLowerCase(), ['שאיר פרטים', 'השאר פרטים', 'רוצה פרטים', 'אשמח לפרטים', 'אשמח לקבל פרטים'])) {
+    console.log("[CHAT] Lead capture triggered: Direct request for details");
+    return true;
+  }
+
+  // Check for high confidence in any intent
+  if (confidence >= MIN_CONFIDENCE) {
+    if (intent === 'human_assistance' || intent === 'pricing' || intent === 'complex_queries') {
+      console.log(`[CHAT] Lead capture triggered: High confidence (${confidence}) in ${intent} intent`);
+      return true;
+    }
+  }
+
+  // Check history for context
+  if (history && history.length > 0) {
+    const lastMessage = history[history.length - 1];
+    if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {
+      const lastModelText = lastMessage.parts[0].text.toLowerCase();
+      console.log(`[CHAT] Last AI message text: "${lastModelText}"`);
+      if (lastModelText.includes('אשמח לחבר אותך עם נציג') || 
+          lastModelText.includes('האם זה מתאים לך?') ||
+          lastModelText.includes('אשמח לקבל פרטים')) {
+        console.log("[CHAT] Lead capture triggered: AI offered assistance and user responded");
+        return true;
       }
     }
   }
-  console.log("[CHAT] Lead capture NOT triggered."); // לוג על אי הפעלת לכידת ליד
+
+  console.log("[CHAT] Lead capture NOT triggered.");
   return false;
 }
 

@@ -32,7 +32,7 @@
  */
 
 // ייבוא מופע ה-db המאותחל (ו-admin אם נדרש)
-import { db, admin } from '../lib/firebaseAdmin.js';
+import { db } from '../lib/firebaseAdmin.js';
 // ייבוא Nodemailer
 import nodemailer from 'nodemailer';
 // ייבוא כלי ה-CORS החדש

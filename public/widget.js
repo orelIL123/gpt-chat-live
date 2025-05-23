@@ -254,9 +254,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Send Lead via Fetch Function ---
   async function sendLeadViaFetch() {
-    console.log("Client: Entering sendLeadViaFetch. Preparing to call /api/capture_lead."); // Added log
+    console.log("[LEAD] Starting lead capture process...");
+    console.log("[LEAD] Client ID:", client_id);
+    console.log("[LEAD] Captured name:", capturedName);
+    console.log("[LEAD] Captured contact:", capturedContact);
+    console.log("[LEAD] Context:", capturedContext);
+
     if (!client_id) {
-      console.error("Cannot send lead: client_id is missing.");
+      console.error("[LEAD] Cannot send lead: client_id is missing.");
       appendMessage('bot', "אירעה שגיאה פנימית (קוד: L1).");
       return;
     }
@@ -271,7 +276,10 @@ document.addEventListener("DOMContentLoaded", function () {
       timestamp: new Date().toISOString()
     };
 
+    console.log("[LEAD] Sending lead data to server:", leadData);
+
     try {
+      console.log("[LEAD] Making POST request to:", LEAD_CAPTURE_API_URL);
       const response = await fetch(LEAD_CAPTURE_API_URL, {
         method: 'POST',
         headers: {
@@ -280,6 +288,10 @@ document.addEventListener("DOMContentLoaded", function () {
         body: JSON.stringify(leadData)
       });
 
+      console.log("[LEAD] Server response status:", response.status);
+      const responseData = await response.json();
+      console.log("[LEAD] Server response data:", responseData);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -287,7 +299,7 @@ document.addEventListener("DOMContentLoaded", function () {
       appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
       resetLeadCaptureState();
     } catch (error) {
-      console.error("Error sending lead:", error);
+      console.error("[LEAD] Error sending lead:", error);
       appendMessage('bot', "אירעה שגיאה בשליחת הפרטים. נסה שוב מאוחר יותר.");
     }
   }
