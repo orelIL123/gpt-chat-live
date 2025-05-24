@@ -615,3 +615,5 @@ Generated sources: README.md [2774B] index.d.ts [246B] esm\index.esm.js [113B] e
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0523 14:15:22.695024   13988 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
 [debug] [2025-05-23T11:15:22.838Z] I0523 14:15:22.837343   13988 engine.go:170] [/emulator/chatbotend 854b] ExecuteGraphqlRead IntrospectionQuery: succeeded. 
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0523 14:15:22.837343   13988 engine.go:170] [/emulator/chatbotend 854b] ExecuteGraphqlRead IntrospectionQuery: succeeded. \n"}}
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[warn] !  Data Connect Emulator has exited upon receiving signal: SIGKILL 

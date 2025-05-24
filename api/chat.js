@@ -139,15 +139,21 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
     return true;
   }
 
-  // Check for high confidence in any intent
+  // Check for 'human_assistance' intent (always trigger lead capture)
+  if (intent === 'human_assistance') {
+    console.log("[CHAT] Lead capture triggered: 'human_assistance' intent detected.");
+    return true;
+  }
+
+  // Check for high confidence in other specific intents
   if (confidence >= MIN_CONFIDENCE) {
-    if (intent === 'human_assistance' || intent === 'pricing' || intent === 'complex_queries') {
+    if (intent === 'pricing' || intent === 'complex_queries') {
       console.log(`[CHAT] Lead capture triggered: High confidence (${confidence}) in ${intent} intent`);
       return true;
     }
   }
 
-  // Check history for context
+  // Check history for context (if AI offered assistance)
   if (history && history.length > 0) {
     const lastMessage = history[history.length - 1];
     if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {

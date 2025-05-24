@@ -1,27 +1,35 @@
+console.log("Chat Widget: Starting to load...");
 document.addEventListener("DOMContentLoaded", function () {
-  // --- Get Client ID: Prioritize URL parameter, fallback to script tag ---
+  console.log("Chat Widget: DOM Content Loaded");
+  // --- Get Client ID and Base URL from script tag ---
   let client_id = null;
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlClientId = urlParams.get('clientId');
-
-  if (urlClientId) {
-    client_id = urlClientId;
-    console.log("Chat Widget: Using clientId from URL parameter:", client_id);
-  } else {
-    const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
-    const scriptClientId = widgetScriptElement?.dataset?.clientId;
-    if (scriptClientId) {
-      client_id = scriptClientId;
-      console.log("Chat Widget: Using clientId from script tag:", client_id);
-    } else {
-      console.error("Chat Widget Error: Could not find clientId in URL parameter ('clientId') or in script tag ('vegos-chat-widget-script' with 'data-client-id'). Widget may not function correctly.");
-    }
+  let baseUrl = null;
+  
+  const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
+  console.log("Chat Widget: Script element found:", widgetScriptElement);
+  if (widgetScriptElement) {
+    // Get client ID
+    client_id = widgetScriptElement.dataset.clientId;
+    console.log("Chat Widget: Using clientId from script tag:", client_id);
+    
+    // Get base URL from script src
+    const scriptSrc = widgetScriptElement.src;
+    baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/'));
+    console.log("Chat Widget: Using base URL:", baseUrl);
   }
 
-  const API_URL = "https://gpt-chat-live.vercel.app/api/chat";
-  const LEAD_CAPTURE_API_URL = "https://gpt-chat-live.vercel.app/api/capture_lead";
+  if (!client_id) {
+    console.error("Chat Widget Error: Could not find clientId in script tag ('vegos-chat-widget-script' with 'data-client-id'). Widget may not function correctly.");
+  }
+
+  if (!baseUrl) {
+    console.error("Chat Widget Error: Could not determine base URL from script tag.");
+  }
+
+  const API_URL = `${baseUrl}/api/chat`;
+  const LEAD_CAPTURE_API_URL = `${baseUrl}/api/capture_lead`;
   const AUTO_OPEN_DELAY = 0;
-  const CLIENT_CONFIG_API_URL = "https://gpt-chat-live.vercel.app/api/client_config";
+  const CLIENT_CONFIG_API_URL = `${baseUrl}/api/client_config`;
   let welcomeMessage = null;
   const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown';
   const LEAD_CAPTURE_KEYWORDS = {

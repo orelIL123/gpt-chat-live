@@ -1,0 +1,1 @@
+// Signup logic using Firebase Auth and mapping to client_id
