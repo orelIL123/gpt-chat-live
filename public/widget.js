@@ -649,6 +649,11 @@ document.addEventListener("DOMContentLoaded", function () {
     return Math.min(score, 100);
   }
 
+  // --- Helper function to check if message contains any of the keywords ---
+  function containsAny(message, keywords) {
+    return keywords.some(keyword => message.includes(keyword.toLowerCase()));
+  }
+
   // --- UI Helper Functions ---
   function showLoading() {
     const loadingElement = document.createElement("div");
