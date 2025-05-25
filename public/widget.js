@@ -330,19 +330,45 @@ document.addEventListener("DOMContentLoaded", function () {
     if (leadCaptureState === 'askingName' || leadCaptureState === 'askingContact') {
         if (containsAny(lowerInput, ['נציג', 'אנושי', 'אדם', 'human', 'agent'])) {
              console.log("Client: User reiterated wanting human assistance during lead capture.");
-             // We could potentially send this back to the main chat flow, but for now, just inform them.
-             appendMessage('bot', 'הבנתי, אשמח לחבר אותך לנציג. אנא המתן.'); // Or a similar message
-             // Optionally, reset or transition the state
-             // resetLeadCaptureState(); // Maybe reset and let the user start a new conversation or wait for a human.
-             // For now, let's just inform and stay in the current state, waiting for name/contact or explicit cancellation.
-             return; // Stop processing as if it were name/contact
+             appendMessage('bot', 'הבנתי, אשמח לחבר אותך לנציג. אנא המתן.');
+             // Consider resetting state or waiting for human here
+             return;
         }
     }
 
-    // שלח את התשובה של המשתמש ל-AI יחד עם ההקשר
+    // Process input based on the current lead capture state
+    if (leadCaptureState === 'askingName') {
+        // Basic validation: Check if input is not too short or just whitespace
+        if (userInput.trim().length > 1) {
+            capturedName = userInput.trim();
+            leadCaptureState = 'askingContact';
+            appendMessage('bot', 'תודה! אשמח לקבל מספר טלפון או כתובת אימייל ליצירת קשר.');
+        } else {
+            appendMessage('bot', 'זה לא נראה כמו שם. אשמח לשמוע את שמך.');
+        }
+        return; // Stop processing after handling name input
+    }
+
+    if (leadCaptureState === 'askingContact') {
+        // Basic validation: Check if input looks like an email or phone number
+        const emailRegex = /.+@.+\..+/;
+        const phoneRegex = /^[\d\s\-\(\)]+$/; // Simple regex for digits, spaces, hyphens, parentheses
+
+        if (emailRegex.test(userInput.trim()) || phoneRegex.test(userInput.trim())) {
+            capturedContact = userInput.trim();
+            console.log(`Client: Captured contact: ${capturedContact}. Calling sendLeadViaFetch.`); // Added log
+            await sendLeadViaFetch(); // Call the function to send the lead
+            // sendLeadViaFetch will handle resetting state and showing success/error
+        } else {
+            appendMessage('bot', 'לא קיבלתי מספר טלפון או אימייל תקין. אפשר לנסות שוב?');
+        }
+        return; // Stop processing after handling contact input
+    }
+
+    // If not in a lead capture state, proceed to send message to AI
     try {
       showLoading();
-      const response = await fetch(API_URL, {
+      const intentResponse = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -350,43 +376,35 @@ document.addEventListener("DOMContentLoaded", function () {
         body: JSON.stringify({
           message: userInput,
           client_id: client_id,
-          lead_capture_state: leadCaptureState,
-          captured_name: capturedName,
-          captured_contact: capturedContact,
-          context: capturedContext,
-          history: chatHistory,
-          lead_capture: true // דגל שמדובר בתהליך ליד
+          analyze_intent: true,
+          history: chatHistory
+        })
+      });
+      const intentData = await intentResponse.json();
+      hideLoading();
+      if (intentData.should_capture_lead) {
+        console.log("Client: Intent analysis returned should_capture_lead = true. Starting lead capture flow."); // Added log
+        startLeadCaptureFlow(intentData);
+        return;
+      }
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          client_id: client_id,
+          history: chatHistory
         })
       });
       const data = await response.json();
-      hideLoading();
-
-      // ניהול זרימת הליד לפי תשובת ה-AI
-      if (data.lead_capture_cancelled) {
-        appendMessage('bot', data.reply || 'אין בעיה, לא אשמור את פרטיך. אם תרצה עזרה נוספת – אני כאן!');
-        resetLeadCaptureState();
-        return;
-      }
-      if (leadCaptureState === 'askingName') {
-        if (data.captured_name) {
-          console.log(`Client: Captured name: ${data.captured_name}. Moving to askingContact state.`); // Added log
-          capturedName = data.captured_name;
-          leadCaptureState = 'askingContact';
-          appendMessage('bot', data.reply || 'תודה! אשמח לקבל מספר טלפון או כתובת אימייל ליצירת קשר.');
-        } else {
-          appendMessage('bot', data.reply || 'לא הבנתי, אשמח לשמוע את שמך.');
-        }
-        return;
-      }
-      if (leadCaptureState === 'askingContact') {
-        console.log("Client: Received response from /api/chat during askingContact state:", data); // Added log
-        if (data.captured_contact) {
-          console.log(`Client: Captured contact: ${data.captured_contact}. Calling sendLeadViaFetch.`); // Added log
-          capturedContact = data.captured_contact;
-          await sendLeadViaFetch();
-          return;
-        }
-        return;
+      appendMessage('bot', data.reply);
+      
+      // Check if lead capture should be triggered from the response
+      if (data.trigger_lead_capture && data.intent_analysis) {
+        console.log("Client: Server response indicates lead capture should be triggered. Starting lead capture flow.");
+        startLeadCaptureFlow(data.intent_analysis);
       }
     } catch (error) {
       hideLoading();
