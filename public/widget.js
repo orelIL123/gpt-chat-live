@@ -316,6 +316,29 @@ document.addEventListener("DOMContentLoaded", function () {
   // --- Lead Capture Flow with AI involvement ---
   async function handleLeadCaptureStep(userInput) {
     console.log(`Client: handleLeadCaptureStep called. Current state: ${leadCaptureState}, Input: "${userInput}"`); // Modified log for clarity
+
+    // Add a check for cancellation or re-confirmation during lead capture
+    const lowerInput = userInput.toLowerCase();
+    if (containsAny(lowerInput, ['לא תודה', 'בטל', 'עצור', 'לא רוצה להשאיר פרטים', 'אני רק רוצה לדבר עם נציג'])) {
+        console.log("Client: Lead capture cancelled by user.");
+        appendMessage('bot', 'אין בעיה, לא אשמור את פרטיך. אם תרצה עזרה נוספת – אני כאן!');
+        resetLeadCaptureState();
+        return;
+    }
+    
+    // If the user reiterates wanting a human agent during name/contact capture
+    if (leadCaptureState === 'askingName' || leadCaptureState === 'askingContact') {
+        if (containsAny(lowerInput, ['נציג', 'אנושי', 'אדם', 'human', 'agent'])) {
+             console.log("Client: User reiterated wanting human assistance during lead capture.");
+             // We could potentially send this back to the main chat flow, but for now, just inform them.
+             appendMessage('bot', 'הבנתי, אשמח לחבר אותך לנציג. אנא המתן.'); // Or a similar message
+             // Optionally, reset or transition the state
+             // resetLeadCaptureState(); // Maybe reset and let the user start a new conversation or wait for a human.
+             // For now, let's just inform and stay in the current state, waiting for name/contact or explicit cancellation.
+             return; // Stop processing as if it were name/contact
+        }
+    }
+
     // שלח את התשובה של המשתמש ל-AI יחד עם ההקשר
     try {
       showLoading();
