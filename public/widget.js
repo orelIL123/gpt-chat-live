@@ -277,10 +277,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const leadData = {
       name: capturedName,
       contact: capturedContact,
-      clientId: client_id,
-      context: capturedContext,
-      history: chatHistory,
-      leadScore: calculateLeadScore(capturedContext),
+      client_id: client_id,
+      intent: capturedContext?.intent || 'unknown',
+      confidence: capturedContext?.confidence || 0,
+      conversation_history: chatHistory,
+      lead_score: calculateLeadScore(capturedContext),
       timestamp: new Date().toISOString()
     };
 
