@@ -56,14 +56,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    // אם נדרש ניתוח כוונות
+    // אם נדרש ניתוח כוונות בלבד (מצב מיוחד)
     if (analyze_intent) {
       const intentAnalysis = await analyzeIntent(message, history);
       return res.status(200).json(intentAnalysis);
     }
 
-    // המשך זרימת הצ'אט הרגילה
+    // זרימת הצ'אט הרגילה - עם ניתוח כוונות אוטומטי
     const response = await generateChatResponse(message, clientId, history);
+    
+    // *** הוספה חדשה: ניתוח כוונות אוטומטי אחרי כל תגובה ***
+    console.log("[CHAT] Analyzing intent automatically after chat response...");
+    const intentAnalysis = await analyzeIntent(message, history);
+    
+    // אם יש צורך בלכידת ליד, הוסף את המידע לתגובה
+    if (intentAnalysis.should_capture_lead) {
+      console.log("[CHAT] Lead capture should be triggered! Adding trigger_lead_capture to response.");
+      response.trigger_lead_capture = true;
+      response.intent_analysis = intentAnalysis;
+    }
+    
     return res.status(200).json(response);
   } catch (error) {
     console.error('[CHAT] Error in chat handler:', error);

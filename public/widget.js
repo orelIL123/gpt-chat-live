@@ -437,6 +437,12 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       const data = await response.json();
       appendMessage('bot', data.reply);
+      
+      // Check if lead capture should be triggered from the response
+      if (data.trigger_lead_capture && data.intent_analysis) {
+        console.log("Client: Server response indicates lead capture should be triggered. Starting lead capture flow.");
+        startLeadCaptureFlow(data.intent_analysis);
+      }
     } catch (error) {
       hideLoading();
       appendMessage('bot', 'מצטער, אירעה שגיאה. אנא נסה שוב.');
