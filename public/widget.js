@@ -385,8 +385,6 @@ document.addEventListener("DOMContentLoaded", function () {
           capturedContact = data.captured_contact;
           await sendLeadViaFetch();
           return;
-        } else {
-          appendMessage('bot', data.reply || 'לא קיבלתי מספר טלפון או אימייל תקין. אפשר לנסות שוב?');
         }
         return;
       }
