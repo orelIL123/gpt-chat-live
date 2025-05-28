@@ -141,39 +141,55 @@ function calculateConfidence(message, intent) {
 
 // פונקציה לקביעה האם יש להפעיל לכידת ליד
 function shouldTriggerLeadCapture(message, intent, confidence, history) {
-  const MIN_CONFIDENCE = 50;
+  const MIN_CONFIDENCE = 30;
 
   console.log(`[CHAT] shouldTriggerLeadCapture called with: message="${message}", intent="${intent}", confidence=${confidence}`);
 
-  // Check for direct lead capture requests
-  if (containsAny(message.toLowerCase(), ['שאיר פרטים', 'השאר פרטים', 'רוצה פרטים', 'אשמח לפרטים', 'אשמח לקבל פרטים'])) {
-    console.log("[CHAT] Lead capture triggered: Direct request for details");
+  const lowerMessage = message.toLowerCase();
+
+  // בדיקות ישירות יותר
+  const directTriggers = [
+    'שאיר פרטים', 'השאר פרטים', 'רוצה פרטים', 
+    'אשמח לפרטים', 'אשמח לקבל פרטים', 'תתקשרו אלי',
+    'רוצה שתתקשרו', 'בוא נדבר', 'אני מעוניין',
+    'כן', 'בסדר', 'אוקיי', 'ok', 'נשמע טוב'
+  ];
+
+  // בדיקה לטריגרים ישירים
+  if (directTriggers.some(trigger => lowerMessage.includes(trigger))) {
+    console.log("[CHAT] Lead capture triggered: Direct trigger found");
     return true;
   }
 
-  // Check for 'human_assistance' intent (always trigger lead capture)
+  // בדיקה לכוונת עזרה אנושית
   if (intent === 'human_assistance') {
     console.log("[CHAT] Lead capture triggered: 'human_assistance' intent detected.");
     return true;
   }
 
-  // Check for high confidence in other specific intents
+  // בדיקה לביטחון גבוה בכוונות ספציפיות
   if (confidence >= MIN_CONFIDENCE) {
-    if (intent === 'pricing' || intent === 'complex_queries') {
+    if (intent === 'pricing' || intent === 'complex_queries' || intent === 'detailed_info') {
       console.log(`[CHAT] Lead capture triggered: High confidence (${confidence}) in ${intent} intent`);
       return true;
     }
   }
 
-  // Check history for context (if AI offered assistance)
+  // בדיקת הקשר מההיסטוריה
   if (history && history.length > 0) {
     const lastMessage = history[history.length - 1];
     if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {
       const lastModelText = lastMessage.parts[0].text.toLowerCase();
-      console.log(`[CHAT] Last AI message text: "${lastModelText}"`);
-      if (lastModelText.includes('אשמח לחבר אותך עם נציג') || 
-          lastModelText.includes('האם זה מתאים לך?') ||
-          lastModelText.includes('אשמח לקבל פרטים')) {
+      
+      const aiOfferTriggers = [
+        'אשמח לחבר אותך עם נציג',
+        'האם זה מתאים לך',
+        'אשמח לקבל פרטים',
+        'רוצה שנציג יצור איתך קשר',
+        'תרצה שאחבר אותך לנציג'
+      ];
+      
+      if (aiOfferTriggers.some(trigger => lastModelText.includes(trigger))) {
         console.log("[CHAT] Lead capture triggered: AI offered assistance and user responded");
         return true;
       }
