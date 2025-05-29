@@ -291,12 +291,12 @@ async function generateChatResponse(message, clientId, history) {
         {
           sender: "client",
           text: message,
-          timestamp: admin.firestore.FieldValue.serverTimestamp()
+          timestamp: new Date().toISOString()
         },
         {
           sender: "bot",
           text: reply,
-          timestamp: admin.firestore.FieldValue.serverTimestamp()
+          timestamp: new Date().toISOString()
         }
       )
     },
