@@ -279,7 +279,31 @@ async function generateChatResponse(message, clientId, history) {
     { merge: true }
   );
 
-  console.log(`[CHAT] Successfully updated history for client_id: ${clientId}`);
+  // --- הוספה: עדכון active_chats ---
+  const activeChatRef = db.collection("active_chats").doc(clientId);
+
+  await activeChatRef.set(
+    {
+      client_id: clientId,
+      status: "active",
+      started_at: admin.firestore.FieldValue.serverTimestamp(),
+      messages: admin.firestore.FieldValue.arrayUnion(
+        {
+          sender: "client",
+          text: message,
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        },
+        {
+          sender: "bot",
+          text: reply,
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        }
+      )
+    },
+    { merge: true }
+  );
+
+  console.log(`[CHAT] Successfully updated history and active_chats for client_id: ${clientId}`);
 
   return { reply };
 }
