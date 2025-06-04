@@ -114,7 +114,13 @@ document.addEventListener("DOMContentLoaded", function () {
     width: "60px", height: "60px",
     display: "flex", justifyContent: "center", alignItems: "center",
     cursor: "pointer",
-    zIndex: "1000"
+    zIndex: "1000",
+    borderRadius: "50%",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    backgroundColor: "#007bff",
+    color: "#fff",
+    fontSize: "16px",
+    padding: "10px"
   });
   chatButton.classList.add('chat-button-pulse'); // Apply pulse animation class
 
@@ -125,8 +131,12 @@ document.addEventListener("DOMContentLoaded", function () {
     width: "300px",
     maxHeight: "calc(100vh - 120px)",
     borderRadius: "10px",
-    backgroundColor: "white", boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-    zIndex: "1000", display: "none", flexDirection: "column", overflow: "hidden"
+    backgroundColor: "#f9f9f9",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    zIndex: "1000", display: "none", flexDirection: "column", overflow: "hidden",
+    padding: "20px",
+    fontFamily: "Arial, sans-serif",
+    color: "#333"
   });
 
   const chatHeader = document.createElement("div");
@@ -572,9 +582,6 @@ document.addEventListener("DOMContentLoaded", function () {
   async function fetchClientConfig() {
     if (!client_id) {
       console.error("Cannot fetch client config: client_id is missing.");
-      if (AUTO_OPEN_DELAY !== null) {
-        setTimeout(openChatProactively, AUTO_OPEN_DELAY);
-      }
       return;
     }
     try {
@@ -597,10 +604,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (error) {
       console.error("Error fetching client config:", error);
-    } finally {
-      if (AUTO_OPEN_DELAY !== null) {
-        setTimeout(openChatProactively, AUTO_OPEN_DELAY);
-      }
     }
   }
 
