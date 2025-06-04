@@ -240,32 +240,39 @@ document.addEventListener("DOMContentLoaded", function () {
   // --- Append Message Function ---
   function appendMessage(role, text, save = true) {
     const msg = document.createElement("div");
-    msg.style.borderRadius = "5px";
-    msg.style.padding = "8px";
-    msg.style.marginBottom = "10px";
-    msg.style.maxWidth = "80%";
-    msg.style.wordWrap = "break-word";
-    msg.style.backgroundColor = role === "user" ? "#dcf8c6" : "#ececec";
-    msg.style.alignSelf = role === "user" ? "flex-start" : "flex-end";
-    msg.style.marginLeft = role === "user" ? "0" : "auto";
-    msg.style.marginRight = role === "user" ? "auto" : "0";
+    Object.assign(msg.style, {
+        borderRadius: "12px",
+        padding: "10px",
+        marginBottom: "10px",
+        maxWidth: "75%",
+        wordWrap: "break-word",
+        fontFamily: "'Roboto', sans-serif",
+        fontSize: "14px",
+        lineHeight: "1.5",
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+        backgroundColor: role === "user" ? "#e0f7fa" : "#f1f8e9",
+        color: role === "user" ? "#00796b" : "#33691e",
+        alignSelf: role === "user" ? "flex-start" : "flex-end",
+        marginLeft: role === "user" ? "0" : "auto",
+        marginRight: role === "user" ? "auto" : "0",
+    });
     msg.textContent = text;
     document.getElementById("vegos-chat-body").appendChild(msg);
     document.getElementById("vegos-chat-body").scrollTop = document.getElementById("vegos-chat-body").scrollHeight;
 
     if (client_id && save) {
-      if (leadCaptureState === 'idle' || role === 'user') {
-        chatHistory.push({ role, text });
-        const MAX_HISTORY_LENGTH = 10;
-        if (chatHistory.length > MAX_HISTORY_LENGTH) {
-          chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY_LENGTH);
+        if (leadCaptureState === 'idle' || role === 'user') {
+            chatHistory.push({ role, text });
+            const MAX_HISTORY_LENGTH = 10;
+            if (chatHistory.length > MAX_HISTORY_LENGTH) {
+                chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY_LENGTH);
+            }
+            try {
+                localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+            } catch (e) {
+                console.error("Error saving chat history:", e);
+            }
         }
-        try {
-          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
-        } catch (e) {
-          console.error("Error saving chat history:", e);
-        }
-      }
     }
     return msg;
   }
