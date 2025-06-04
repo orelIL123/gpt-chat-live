@@ -115,14 +115,14 @@ document.addEventListener("DOMContentLoaded", function () {
     display: "flex", justifyContent: "center", alignItems: "center",
     cursor: "pointer",
     zIndex: "1000",
-    borderRadius: "50%",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    backgroundColor: "#007bff",
+    borderRadius: "50%", // Keep circular shape but remove blue background
+    boxShadow: "none", // Remove shadow
+    backgroundColor: "transparent", // Make background transparent
     color: "#fff",
     fontSize: "16px",
-    padding: "10px"
-  });
-  chatButton.classList.add('chat-button-pulse'); // Apply pulse animation class
+    padding: "10px",
+    fontFamily: "'Heebo', sans-serif" // Change font to Heebo
+});
 
   const chatWindow = document.createElement("div");
   chatWindow.id = 'vegos-chat-window'; // Add ID for CSS targeting
@@ -135,7 +135,7 @@ document.addEventListener("DOMContentLoaded", function () {
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
     zIndex: "1000", display: "none", flexDirection: "column", overflow: "hidden",
     padding: "20px",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "'Heebo', sans-serif", // Change font to Heebo for chat window
     color: "#333"
   });
 
