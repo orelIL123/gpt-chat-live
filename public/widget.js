@@ -698,4 +698,14 @@ document.addEventListener("DOMContentLoaded", function () {
       }, 300);
     }
   }
+
+  // Add logic to dynamically load a logo based on client_id, with a default fallback
+  const logoImg = document.createElement("img");
+  logoImg.src = client_id ? `${baseUrl}/logo/${client_id}.png` : `${baseUrl}/logo/default.png`; // Load client-specific logo or default
+  Object.assign(logoImg.style, {
+      width: "30px",
+      height: "30px",
+      marginRight: "10px",
+  });
+  chatHeader.insertBefore(logoImg, titleSpan); // Add logo to chat header
 });
