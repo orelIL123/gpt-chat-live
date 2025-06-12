@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
   chatWindow.id = 'vegos-chat-window'; // Add ID for CSS targeting
   Object.assign(chatWindow.style, {
     position: "fixed", bottom: "90px", left: "20px", // Changed back to left
-    width: "300px",
+    width: "350px",
     maxHeight: "calc(100vh - 120px)",
     borderRadius: "10px",
     backgroundColor: "#f9f9f9",
