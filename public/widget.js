@@ -3,18 +3,24 @@ document.addEventListener("DOMContentLoaded", function () {
   console.log("Chat Widget: DOM Content Loaded");
   // --- Get Client + API from <script data-*> ---
   const scriptTag = document.currentScript || document.querySelector('script[data-client-id]');
+  console.log('Chat Widget: Script tag found:', scriptTag);
   const client_id = scriptTag?.dataset?.clientId;
+  console.log('Chat Widget: Client ID extracted:', client_id);
   let baseUrl = scriptTag?.dataset?.apiUrl || scriptTag.src.split('/').slice(0,-1).join('/');
+  console.log('Chat Widget: Base URL before fix:', baseUrl);
   
   // Fix if data-api-url includes the full path
   if (baseUrl && baseUrl.endsWith('/api/chat')) {
     baseUrl = baseUrl.replace('/api/chat', '');
+    console.log('Chat Widget: Base URL after fix:', baseUrl);
   }
   
   if (!client_id) {
     console.error('Chat-Widget ❌ client_id missing in <script>');
     return;
   }
+  
+  console.log('Chat Widget: Final config - client_id:', client_id, 'baseUrl:', baseUrl);
 
   const API_URL = `${baseUrl}/api/chat`;
   const LEAD_CAPTURE_API_URL = `${baseUrl}/api/capture_lead`;
