@@ -1,35 +1,25 @@
 console.log("Chat Widget: Starting to load...");
 document.addEventListener("DOMContentLoaded", function () {
   console.log("Chat Widget: DOM Content Loaded");
-  // --- Get Client ID and Base URL from script tag ---
-  let client_id = null;
-  let baseUrl = null;
+  // --- Get Client + API from <script data-*> ---
+  const scriptTag = document.currentScript || document.querySelector('script[data-client-id]');
+  const client_id = scriptTag?.dataset?.clientId;
+  let baseUrl = scriptTag?.dataset?.apiUrl || scriptTag.src.split('/').slice(0,-1).join('/');
   
-  const widgetScriptElement = document.getElementById('vegos-chat-widget-script');
-  console.log("Chat Widget: Script element found:", widgetScriptElement);
-  if (widgetScriptElement) {
-    // Get client ID
-    client_id = widgetScriptElement.dataset.clientId;
-    console.log("Chat Widget: Using clientId from script tag:", client_id);
-    
-    // Get base URL from script src
-    const scriptSrc = widgetScriptElement.src;
-    baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/'));
-    console.log("Chat Widget: Using base URL:", baseUrl);
+  // Fix if data-api-url includes the full path
+  if (baseUrl && baseUrl.endsWith('/api/chat')) {
+    baseUrl = baseUrl.replace('/api/chat', '');
   }
-
+  
   if (!client_id) {
-    console.error("Chat Widget Error: Could not find clientId in script tag ('vegos-chat-widget-script' with 'data-client-id'). Widget may not function correctly.");
-  }
-
-  if (!baseUrl) {
-    console.error("Chat Widget Error: Could not determine base URL from script tag.");
+    console.error('Chat-Widget ❌ client_id missing in <script>');
+    return;
   }
 
   const API_URL = `${baseUrl}/api/chat`;
   const LEAD_CAPTURE_API_URL = `${baseUrl}/api/capture_lead`;
-  const AUTO_OPEN_DELAY = 0;
   const CLIENT_CONFIG_API_URL = `${baseUrl}/api/client_config`;
+  const AUTO_OPEN_DELAY = 0;
   let welcomeMessage = null;
   const CHAT_HISTORY_KEY = client_id ? `chatHistory_${client_id}` : 'chatHistory_unknown';
   const LEAD_CAPTURE_KEYWORDS = {
@@ -699,13 +689,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Add logic to dynamically load a logo based on client_id, with a default fallback
-  const logoImg = document.createElement("img");
-  logoImg.src = client_id ? `${baseUrl}/logo/${client_id}.png` : `${baseUrl}/logo/default.png`; // Load client-specific logo or default
-  Object.assign(logoImg.style, {
+  // לוגו בכותרת – שם חדש כדי למנוע כפילות
+  const headerLogoImg = document.createElement("img");
+  headerLogoImg.src = client_id ? `${baseUrl}/logo/${client_id}.png` : `${baseUrl}/logo/default.png`;
+  Object.assign(headerLogoImg.style, {
       width: "30px",
       height: "30px",
-      marginRight: "10px",
+      marginRight: "10px"
   });
-  chatHeader.insertBefore(logoImg, titleSpan); // Add logo to chat header
+  chatHeader.insertBefore(headerLogoImg, titleSpan);
 });
