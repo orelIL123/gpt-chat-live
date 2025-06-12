@@ -1,4 +1,11 @@
 console.log("Chat Widget: Starting to load...");
+
+// Add font stylesheet
+const fontStylesheet = document.createElement('link');
+fontStylesheet.rel = 'stylesheet';
+fontStylesheet.href = 'https://gpt-chat-live.vercel.app/fonts.css';
+document.head.appendChild(fontStylesheet);
+
 document.addEventListener("DOMContentLoaded", function () {
   console.log("Chat Widget: DOM Content Loaded");
   // --- Get Client + API from <script data-*> ---
@@ -99,7 +106,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const chatButton = document.createElement("div");
   chatButton.id = 'vegos-chat-button'; // Add ID for CSS targeting
   const logoImg = document.createElement("img");
-  logoImg.src = "./logo/logo.png"; // Update logo to green 3D chat bubble with 'AI'
+  logoImg.src = client_id ? 
+    `https://gpt-chat-live.vercel.app/logo/${client_id}.png` :
+    `https://gpt-chat-live.vercel.app/logo/default.png`;
+  logoImg.onerror = function() {
+    this.src = `https://gpt-chat-live.vercel.app/logo/default.png`;
+  };
   Object.assign(logoImg.style, {
     width: "100%",
     height: "100%",
@@ -117,7 +129,8 @@ document.addEventListener("DOMContentLoaded", function () {
     color: "#fff",
     fontSize: "16px",
     padding: "10px",
-    fontFamily: "'Heebo Black', sans-serif" // Change font to Heebo Black
+    fontFamily: "'Heebo', sans-serif",
+    fontWeight: "900" // Using Heebo Black weight
 });
 
   const chatWindow = document.createElement("div");
@@ -132,7 +145,8 @@ document.addEventListener("DOMContentLoaded", function () {
     zIndex: "1000", display: "none", flexDirection: "column", overflow: "hidden",
     padding: "20px",
     fontFamily: "'Heebo', sans-serif", // Change font to Heebo for chat window
-    color: "#333"
+    color: "#333",
+    direction: "rtl"
   });
 
   const chatHeader = document.createElement("div");
@@ -697,7 +711,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // לוגו בכותרת – שם חדש כדי למנוע כפילות
   const headerLogoImg = document.createElement("img");
-  headerLogoImg.src = client_id ? `${baseUrl}/logo/${client_id}.png` : "./logo/logo.png"; // Ensure correct logo for client_id or default
+  // Dynamic logo path based on client_id
+  headerLogoImg.src = client_id ? 
+    `https://gpt-chat-live.vercel.app/logo/${client_id}.png` :
+    `https://gpt-chat-live.vercel.app/logo/default.png`;
+  
+  // Add error handling for logo loading
+  headerLogoImg.onerror = function() {
+    this.src = `https://gpt-chat-live.vercel.app/logo/default.png`;
+  };
   Object.assign(headerLogoImg.style, {
       width: "30px",
       height: "30px",
