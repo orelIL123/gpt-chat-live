@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const chatButton = document.createElement("div");
   chatButton.id = 'vegos-chat-button'; // Add ID for CSS targeting
   const logoImg = document.createElement("img");
-  logoImg.src = "https://cdn-icons-png.flaticon.com/512/1041/1041916.png"; // Changed to a standard chat bubble icon
+  logoImg.src = "./logo/logo.png"; // Update logo to green 3D chat bubble with 'AI'
   Object.assign(logoImg.style, {
     width: "100%",
     height: "100%",
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
     color: "#fff",
     fontSize: "16px",
     padding: "10px",
-    fontFamily: "'Heebo', sans-serif" // Change font to Heebo
+    fontFamily: "'Heebo Black', sans-serif" // Change font to Heebo Black
 });
 
   const chatWindow = document.createElement("div");
@@ -697,7 +697,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // לוגו בכותרת – שם חדש כדי למנוע כפילות
   const headerLogoImg = document.createElement("img");
-  headerLogoImg.src = client_id ? `${baseUrl}/logo/${client_id}.png` : `${baseUrl}/logo/default.png`;
+  headerLogoImg.src = client_id ? `${baseUrl}/logo/${client_id}.png` : "./logo/logo.png"; // Ensure correct logo for client_id or default
   Object.assign(headerLogoImg.style, {
       width: "30px",
       height: "30px",
