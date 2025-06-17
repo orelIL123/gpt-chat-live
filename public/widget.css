@@ -1,10 +1,19 @@
+#vegos-chat-widget-wrapper{
+  position:fixed!important;
+  bottom:90px;          /* מעל reCAPTCHA */
+  right:16px;
+  width:340px;
+  max-height:calc(100vh - 120px);
+  overflow-y:auto;
+  z-index:999999;       /* מעל כפתור הנגישות */
+}
 /* עיצוב כללי */
 .chat-widget {
     position: fixed;
     bottom: 90px;
     left: 20px;
     width: 300px;
-    max-height: calc(100vh - 120px);
+    max-height: 98vh; /* Further increased max-height for desktop */
     border-radius: 10px;
     font-family: 'Heebo', sans-serif;
     background-color: white;
@@ -12,7 +21,7 @@
     z-index: 1000;
     display: none;
     flex-direction: column;
-    overflow: hidden;
+    /* Removed overflow: hidden */
     transition: height 0.3s ease-in-out;
 }
 
@@ -233,7 +242,7 @@
         max-width: 370px;
         left: 10px;
         bottom: 75px;
-        max-height: 70vh;
+        max-height: 95vh; /* Further increased max-height for mobile */
     }
     
     #vegos-chat-button {
