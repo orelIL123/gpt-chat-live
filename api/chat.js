@@ -268,7 +268,7 @@ async function generateChatResponse(message, clientId, history) {
   const result = await model.generateContent({
     contents,
     generationConfig: {
-      maxOutputTokens: 60, // הגבלת טוקנים
+      maxOutputTokens: 40, // הגבלת טוקנים
       temperature: 0.3, // שליטה על יצירתיות
       stopSequences: ["\n\n"], // קביעת Stop sequence
     },
