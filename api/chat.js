@@ -236,25 +236,42 @@ async function generateChatResponse(message, clientId, history) {
   const data = doc.exists ? doc.data() : {};
 
   // קבלת הנחיית המערכת (עם ברירת מחדל)
-  const systemPrompt =
+  // קבלת הנחיית המערכת (עם ברירת מחדל) והקשחתה
+  const baseSystemPrompt =
     typeof data.system_prompt === "string" && data.system_prompt.trim().length > 0
       ? data.system_prompt
       : "אתה עוזר כללי ועונה בעברית בצורה נעימה.";
+
+  // הוספת הנחיה להגבלת אורך התשובה בתחילת הפרומפט
+  const systemPrompt = "הגב ב-15-30 מילים, לא יותר משתי שורות. " + baseSystemPrompt;
 
   // קבלת היסטוריה (ודא שמדובר במערך)
   const retrievedHistory = Array.isArray(data.history) ? data.history : [];
 
   // 7. בניית מערך ההודעות עבור Gemini API
+  // 7. בניית מערך ההודעות עבור Gemini API כולל Few-shot example
   const contents = [
     { role: "user", parts: [{ text: systemPrompt }] },
     { role: "model", parts: [{ text: "Okay." }] },
     ...retrievedHistory,
+    // Few-shot example
+    { role: "user", parts: [{ text: "אני רוצה לבנות אתר" }] },
+    { role: "model", parts: [{ text: "בטח! נבנה לך אתר תדמית יעיל. לפרטים: 055-4420446" }] },
     { role: "user", parts: [{ text: message }] },
   ];
 
   // 8. קריאה ל-Google Gemini API
   console.log(`[CHAT] Calling Gemini for client_id: ${clientId} with ${contents.length} content parts.`);
-  const result = await model.generateContent({ contents });
+  // 8. קריאה ל-Google Gemini API עם הגדרות נוספות לשליטה על התשובה
+  console.log(`[CHAT] Calling Gemini for client_id: ${clientId} with ${contents.length} content parts.`);
+  const result = await model.generateContent({
+    contents,
+    generationConfig: {
+      maxOutputTokens: 60, // הגבלת טוקנים
+      temperature: 0.3, // שליטה על יצירתיות
+      stopSequences: ["\n\n"], // קביעת Stop sequence
+    },
+  });
   const response = result.response;
 
   if (!response || !response.candidates || response.candidates.length === 0 || !response.candidates[0].content) {

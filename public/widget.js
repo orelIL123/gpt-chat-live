@@ -266,7 +266,11 @@ document.addEventListener("DOMContentLoaded", function () {
         marginLeft: role === "user" ? "0" : "auto",
         marginRight: role === "user" ? "auto" : "0",
     });
-    msg.textContent = text;
+
+    // Convert basic markdown (like **bold**) to HTML
+    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    msg.innerHTML = formattedText; // Use innerHTML to render HTML tags
     document.getElementById("vegos-chat-body").appendChild(msg);
     document.getElementById("vegos-chat-body").scrollTop = document.getElementById("vegos-chat-body").scrollHeight;
 
