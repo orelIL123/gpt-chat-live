@@ -142,13 +142,14 @@ function calculateConfidence(message, intent) {
 
 // פונקציה לקביעה האם יש להפעיל לכידת ליד
 function shouldTriggerLeadCapture(message, intent, confidence, history) {
-  const MIN_CONFIDENCE = 30;
+  const MIN_CONFIDENCE = 30; // Keep minimum confidence for specific intents
+  const HUMAN_ASSISTANCE_MIN_CONFIDENCE = 70; // Higher confidence needed for direct human assistance trigger
 
   console.log(`[CHAT] shouldTriggerLeadCapture called with: message="${message}", intent="${intent}", confidence=${confidence}`);
 
   const lowerMessage = message.toLowerCase();
 
-  // בדיקות ישירות יותר
+  // בדיקות ישירות יותר - Keep these as they are explicit user requests
   const directTriggers = [
     'שאיר פרטים', 'השאר פרטים', 'רוצה פרטים',
     'אשמח לפרטים', 'אשמח לקבל פרטים', 'תתקשרו אלי',
@@ -162,13 +163,13 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
     return true;
   }
 
-  // בדיקה לכוונת עזרה אנושית
-  if (intent === 'human_assistance') {
-    console.log("[CHAT] Lead capture triggered: 'human_assistance' intent detected.");
+  // בדיקה לכוונת עזרה אנושית - Require higher confidence for this to trigger lead capture directly
+  if (intent === 'human_assistance' && confidence >= HUMAN_ASSISTANCE_MIN_CONFIDENCE) {
+    console.log(`[CHAT] Lead capture triggered: 'human_assistance' intent detected with high confidence (${confidence}).`);
     return true;
   }
 
-  // בדיקה לביטחון גבוה בכוונות ספציפיות
+  // בדיקה לביטחון גבוה בכוונות ספציפיות - Keep this logic
   if (confidence >= MIN_CONFIDENCE) {
     if (intent === 'pricing' || intent === 'complex_queries' || intent === 'detailed_info') {
       console.log(`[CHAT] Lead capture triggered: High confidence (${confidence}) in ${intent} intent`);
@@ -176,11 +177,11 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
     }
   }
 
-  // בדיקת הקשר מההיסטוריה
+  // בדיקת הקשר מההיסטוריה - Keep this logic
   if (history && history.length > 0) {
     const lastMessage = history[history.length - 1];
-    if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {
-      const lastModelText = lastMessage.parts[0].text.toLowerCase();
+    if (lastMessage.role === 'assistant' && lastMessage.content) { // Changed role to assistant for OpenAI format
+      const lastModelText = lastMessage.content.toLowerCase(); // Changed parts[0].text to content
 
       const aiOfferTriggers = [
         'אשמח לחבר אותך עם נציג',
@@ -255,7 +256,7 @@ async function generateChatResponse(message, clientId, history) {
     { role: "system", content: systemPrompt },
     ...limitedHistory.map(msg => ({
       role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.parts[0].text
+      content: msg.parts ? msg.parts[0].text : msg.content // Handle both old Gemini and new OpenAI history formats
     })),
     { role: "user", content: message },
   ];
