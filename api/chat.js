@@ -11,7 +11,7 @@ if (!process.env.GOOGLE_API_KEY) {
   // טיפול מתאים במפתח API חסר
 }
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
 
 // 4. פונקציית ה-Handler הראשית של ה-API
 export default async function handler(req, res) {
