@@ -1,17 +1,18 @@
-// api/chat.js - Updated for Google Gemini with History
+// api/chat.js - Updated for OpenAI with History
 
 // 1. ייבוא ספריות נחוצות
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const OpenAI = require("openai");
 const { applyDynamicCors } = require("../lib/corsUtil.js");
 const { db, admin } = require("../lib/firebaseAdmin.js"); // ייבוא admin גם כן לצורך FieldValue
 
-// 3. אתחול לקוח Google Generative AI
-if (!process.env.GOOGLE_API_KEY) {
-  console.error("GOOGLE_API_KEY environment variable is not set.");
+// 3. אתחול לקוח OpenAI
+if (!process.env.OPENAI_API_KEY) {
+  console.error("OPENAI_API_KEY environment variable is not set.");
   // טיפול מתאים במפתח API חסר
 }
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // 4. פונקציית ה-Handler הראשית של ה-API
 export default async function handler(req, res) {
@@ -64,18 +65,18 @@ export default async function handler(req, res) {
 
     // זרימת הצ'אט הרגילה - עם ניתוח כוונות אוטומטי
     const response = await generateChatResponse(message, clientId, history);
-    
+
     // *** הוספה חדשה: ניתוח כוונות אוטומטי אחרי כל תגובה ***
     console.log("[CHAT] Analyzing intent automatically after chat response...");
     const intentAnalysis = await analyzeIntent(message, history);
-    
+
     // אם יש צורך בלכידת ליד, הוסף את המידע לתגובה
     if (intentAnalysis.should_capture_lead) {
       console.log("[CHAT] Lead capture should be triggered! Adding trigger_lead_capture to response.");
       response.trigger_lead_capture = true;
       response.intent_analysis = intentAnalysis;
     }
-    
+
     return res.status(200).json(response);
   } catch (error) {
     console.error('[CHAT] Error in chat handler:', error);
@@ -149,7 +150,7 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
 
   // בדיקות ישירות יותר
   const directTriggers = [
-    'שאיר פרטים', 'השאר פרטים', 'רוצה פרטים', 
+    'שאיר פרטים', 'השאר פרטים', 'רוצה פרטים',
     'אשמח לפרטים', 'אשמח לקבל פרטים', 'תתקשרו אלי',
     'רוצה שתתקשרו', 'בוא נדבר', 'אני מעוניין',
     'כן', 'בסדר', 'אוקיי', 'ok', 'נשמע טוב'
@@ -180,7 +181,7 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
     const lastMessage = history[history.length - 1];
     if (lastMessage.role === 'model' && lastMessage.parts && lastMessage.parts.length > 0) {
       const lastModelText = lastMessage.parts[0].text.toLowerCase();
-      
+
       const aiOfferTriggers = [
         'אשמח לחבר אותך עם נציג',
         'האם זה מתאים לך',
@@ -188,7 +189,7 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
         'רוצה שנציג יצור איתך קשר',
         'תרצה שאחבר אותך לנציג'
       ];
-      
+
       if (aiOfferTriggers.some(trigger => lastModelText.includes(trigger))) {
         console.log("[CHAT] Lead capture triggered: AI offered assistance and user responded");
         return true;
@@ -249,48 +250,41 @@ async function generateChatResponse(message, clientId, history) {
   const retrievedHistory = Array.isArray(data.history) ? data.history : [];
   const limitedHistory = retrievedHistory.slice(-15); // קח את 15 ההודעות האחרונות
 
-  // 7. בניית מערך ההודעות עבור Gemini API
-  // 7. בניית מערך ההודעות עבור Gemini API כולל Few-shot example
-  const contents = [
-    { role: "user", parts: [{ text: systemPrompt }] },
-    { role: "model", parts: [{ text: "Okay." }] },
-    ...limitedHistory, // השתמש בהיסטוריה המוגבלת
-    // Few-shot example
-    { role: "user", parts: [{ text: "אני רוצה לבנות אתר" }] },
-    { role: "model", parts: [{ text: "בטח! נבנה לך אתר תדמית יעיל. לפרטים: 055-4420446" }] },
-    { role: "user", parts: [{ text: message }] },
+  // 7. בניית מערך ההודעות עבור OpenAI API
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...limitedHistory.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.parts[0].text
+    })),
+    { role: "user", content: message },
   ];
 
-  // 8. קריאה ל-Google Gemini API
-  console.log(`[CHAT] Calling Gemini for client_id: ${clientId} with ${contents.length} content parts.`);
-  // 8. קריאה ל-Google Gemini API עם הגדרות נוספות לשליטה על התשובה
-  console.log(`[CHAT] Calling Gemini for client_id: ${clientId} with ${contents.length} content parts.`);
-  const result = await model.generateContent({
-    contents,
-    generationConfig: {
-      maxOutputTokens: 80, // הגבלת טוקנים
-      temperature: 0.3, // שליטה על יצירתיות
-      stopSequences: ["\n\n"], // קביעת Stop sequence
-    },
+  // 8. קריאה ל-OpenAI API
+  console.log(`[CHAT] Calling OpenAI for client_id: ${clientId} with ${messages.length} messages.`);
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini", // או מודל אחר שתבחר
+    messages: messages,
+    max_tokens: 80, // הגבלת טוקנים
+    temperature: 0.3, // שליטה על יצירתיות
   });
-  const response = result.response;
 
-  if (!response || !response.candidates || response.candidates.length === 0 || !response.candidates[0].content) {
-      console.error("[CHAT] Invalid response structure from Gemini API:", response);
+  if (!completion || !completion.choices || completion.choices.length === 0 || !completion.choices[0].message) {
+      console.error("[CHAT] Invalid response structure from OpenAI API:", completion);
       throw new Error("Failed to get a valid response from the AI model.");
   }
 
-  const reply = response.text();
+  const reply = completion.choices[0].message.content;
 
   // Add a check to ensure the generated reply is not empty
   if (!reply || typeof reply !== 'string' || reply.trim().length === 0) {
-      console.error("[CHAT] Received empty or invalid reply text from Gemini API.");
+      console.error("[CHAT] Received empty or invalid reply text from OpenAI API.");
       throw new Error("Failed to get a valid text response from the AI model.");
   }
 
   // 9. עדכון Firestore עם הודעת המשתמש החדשה ותגובת ה-AI
   const newUserMessageForHistory = { role: "user", parts: [{ text: message }] };
-  const newAiMessageForHistory = { role: "model", parts: [{ text: reply }] };
+  const newAiMessageForHistory = { role: "model", parts: [{ text: reply }] }; // שמור את התגובה בפורמט הישן עבור Firestore
 
   await docRef.set(
     {
@@ -298,7 +292,7 @@ async function generateChatResponse(message, clientId, history) {
         newUserMessageForHistory,
         newAiMessageForHistory
       ),
-      ...( !data.system_prompt && { system_prompt: systemPrompt } )
+      ...( !data.system_prompt && { system_prompt: baseSystemPrompt } ) // שמור את הפרומפט הבסיסי ללא הגבלת אורך
     },
     { merge: true }
   );
