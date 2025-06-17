@@ -189,6 +189,27 @@ export default async function handler(req, res) {
 async function sendLeadNotification(leadData) {
   console.log("[CAPTURE_LEAD] Attempting to send lead notification...");
   try {
+    // Fetch client-specific admin email from Firestore
+    let recipientEmail = process.env.ADMIN_EMAIL || 'vegoschat@gmail.com'; // Default fallback
+
+    if (leadData.client_id) {
+      const clientDocRef = db.collection("brains").doc(leadData.client_id);
+      const clientDoc = await clientDocRef.get();
+      if (clientDoc.exists) {
+        const clientData = clientDoc.data();
+        if (clientData.admin_email && typeof clientData.admin_email === 'string' && clientData.admin_email.trim().length > 0) {
+          recipientEmail = clientData.admin_email.trim();
+          console.log(`[CAPTURE_LEAD] Using client-specific admin email from Firestore: ${recipientEmail}`);
+        } else {
+          console.log(`[CAPTURE_LEAD] Client document found for ${leadData.client_id}, but no valid admin_email field. Using default/env email.`);
+        }
+      } else {
+        console.log(`[CAPTURE_LEAD] Client document not found for ${leadData.client_id}. Using default/env email.`);
+      }
+    } else {
+      console.warn("[CAPTURE_LEAD] leadData.client_id is missing. Cannot fetch client-specific email. Using default/env email.");
+    }
+
     // שליחת התראה ל-Slack
     if (process.env.SLACK_WEBHOOK_URL) { // בדיקה אם SLACK_WEBHOOK_URL מוגדר
       const notification = {
@@ -245,7 +266,7 @@ async function sendLeadNotification(leadData) {
     // שליחת מייל למנהל
     const mailOptions = {
       from: `"${fromName}" <${zohoUser}>`,
-      to: process.env.ADMIN_EMAIL || 'vegoschat@gmail.com',
+      to: recipientEmail, // Use the determined recipient email
       subject: `ליד חדש - ${leadData.name}`,
       html: `
         <h2>ליד חדש מהצ'אטבוט</h2>

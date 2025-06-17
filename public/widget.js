@@ -271,8 +271,13 @@ document.addEventListener("DOMContentLoaded", function () {
     let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     msg.innerHTML = formattedText; // Use innerHTML to render HTML tags
-    document.getElementById("vegos-chat-body").appendChild(msg);
-    document.getElementById("vegos-chat-body").scrollTop = document.getElementById("vegos-chat-body").scrollHeight;
+    const chatBody = document.getElementById("vegos-chat-body");
+    chatBody.appendChild(msg);
+
+    // Scroll to the bottom after the message is added and rendered
+    requestAnimationFrame(() => {
+        chatBody.scrollTop = chatBody.scrollHeight;
+    });
 
     if (client_id && save) {
         if (leadCaptureState === 'idle' || role === 'user') {
@@ -376,7 +381,8 @@ document.addEventListener("DOMContentLoaded", function () {
             leadCaptureState = 'askingContact';
             appendMessage('bot', 'תודה! אשמח לקבל מספר טלפון או כתובת אימייל ליצירת קשר.');
         } else {
-            appendMessage('bot', 'זה לא נראה כמו שם. אשמח לשמוע את שמך.');
+            // Clarify that we are asking for the name
+            appendMessage('bot', 'נראה שזו לא תשובה תקינה לשם. אנא הקלד את שמך המלא.');
         }
         return; // Stop processing after handling name input
     }
