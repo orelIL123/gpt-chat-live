@@ -250,22 +250,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // --- Append Message Function ---
   function appendMessage(role, text, save = true) {
     const msg = document.createElement("div");
-    Object.assign(msg.style, {
-        borderRadius: "12px",
-        padding: "10px",
-        marginBottom: "10px",
-        maxWidth: "75%",
-        wordWrap: "break-word",
-        fontFamily: "'Roboto', sans-serif",
-        fontSize: "14px",
-        lineHeight: "1.5",
-        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        backgroundColor: role === "user" ? "#e0f7fa" : "#f1f8e9",
-        color: role === "user" ? "#00796b" : "#33691e",
-        alignSelf: role === "user" ? "flex-start" : "flex-end",
-        marginLeft: role === "user" ? "0" : "auto",
-        marginRight: role === "user" ? "auto" : "0",
-    });
+    msg.classList.add('message'); // Add base message class
+    if (role === 'user') {
+        msg.classList.add('user-message'); // Add user-specific class
+    } else {
+        msg.classList.add('bot-message'); // Add bot-specific class
+    }
 
     // Convert basic markdown (like **bold**) to HTML
     let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
