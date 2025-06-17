@@ -73,7 +73,7 @@
     flex-grow: 1;
     overflow-y: auto;
     direction: rtl;
-    max-height: calc(90vh - 120px); /* Adjust max-height for desktop */
+    max-height: calc(95vh - 120px); /* Adjust max-height for desktop */
 }
 
 /* עיצוב הודעות */
@@ -244,7 +244,7 @@
     }
     
     .chat-messages {
-        max-height: calc(80vh - 125px);
+        max-height: calc(85vh - 125px);
     }
     
     .message-input {
