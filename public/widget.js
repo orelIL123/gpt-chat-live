@@ -249,6 +249,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Append Message Function ---
   function appendMessage(role, text, save = true) {
+    // Prevent appending empty messages or messages with only whitespace
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+        console.log(`Client: Attempted to append empty or invalid message for role: ${role}. Aborting.`);
+        return;
+    }
+
     const msg = document.createElement("div");
     msg.classList.add('message'); // Add base message class
     if (role === 'user') {
@@ -427,7 +433,15 @@ document.addEventListener("DOMContentLoaded", function () {
         })
       });
       const data = await response.json();
-      appendMessage('bot', data.reply);
+      
+      // Check if the reply from the API is valid before appending
+      if (data && data.reply && typeof data.reply === 'string' && data.reply.trim().length > 0) {
+          appendMessage('bot', data.reply);
+      } else {
+          console.warn("Client: Received empty or invalid reply from API in handleLeadCaptureStep.", data);
+          // Optionally append a generic error message if the reply is empty
+          // appendMessage('bot', 'מצטער, לא קיבלתי תשובה מהשרת.');
+      }
       
       // Check if lead capture should be triggered from the response
       if (data.trigger_lead_capture && data.intent_analysis) {
@@ -446,7 +460,13 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Client: sendMessage function started."); // Added log
     const messageInput = document.getElementById('vegos-chat-input');
     const message = messageInput.value.trim();
-    if (!message) return;
+
+    // Check if the message is empty or contains only whitespace after trimming
+    if (!message || message.length === 0) {
+        console.log("Client: Attempted to send empty message. Aborting.");
+        return; // Prevent sending empty messages
+    }
+
     appendMessage("user", message);
     messageInput.value = '';
 
@@ -503,7 +523,15 @@ document.addEventListener("DOMContentLoaded", function () {
         })
       });
       const data = await response.json();
-      appendMessage('bot', data.reply);
+      
+      // Check if the reply from the API is valid before appending
+      if (data && data.reply && typeof data.reply === 'string' && data.reply.trim().length > 0) {
+          appendMessage('bot', data.reply);
+      } else {
+          console.warn("Client: Received empty or invalid reply from API in sendMessage.", data);
+          // Optionally append a generic error message if the reply is empty
+          // appendMessage('bot', 'מצטער, לא קיבלתי תשובה מהשרת.');
+      }
       
       // Check if lead capture should be triggered from the response
       if (data.trigger_lead_capture && data.intent_analysis) {

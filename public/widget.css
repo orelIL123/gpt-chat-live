@@ -19,10 +19,11 @@
     background-color: white;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     z-index: 1000;
-    display: none;
+    display: none; /* This should be toggled to flex via JS when visible */
     flex-direction: column;
     /* Removed overflow: hidden */
     transition: height 0.3s ease-in-out;
+    display: flex; /* Ensure flex display when not hidden */
 }
 
 /* עיצוב כפתור הצ'אט */
@@ -83,6 +84,7 @@
     overflow-y: auto;
     direction: rtl;
     /* Removed max-height to rely on flex-grow */
+    min-height: 0; /* Crucial for flex items with overflow */
 }
 
 /* עיצוב הודעות */

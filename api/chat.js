@@ -282,6 +282,12 @@ async function generateChatResponse(message, clientId, history) {
 
   const reply = response.text();
 
+  // Add a check to ensure the generated reply is not empty
+  if (!reply || typeof reply !== 'string' || reply.trim().length === 0) {
+      console.error("[CHAT] Received empty or invalid reply text from Gemini API.");
+      throw new Error("Failed to get a valid text response from the AI model.");
+  }
+
   // 9. עדכון Firestore עם הודעת המשתמש החדשה ותגובת ה-AI
   const newUserMessageForHistory = { role: "user", parts: [{ text: message }] };
   const newAiMessageForHistory = { role: "model", parts: [{ text: reply }] };
