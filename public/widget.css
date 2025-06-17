@@ -73,6 +73,7 @@
     flex-grow: 1;
     overflow-y: auto;
     direction: rtl;
+    max-height: calc(90vh - 120px); /* Adjust max-height for desktop */
 }
 
 /* עיצוב הודעות */
