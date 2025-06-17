@@ -245,15 +245,16 @@ async function generateChatResponse(message, clientId, history) {
   // הוספת הנחיה להגבלת אורך התשובה בתחילת הפרומפט
   const systemPrompt = "הגב ב-15-30 מילים, לא יותר משתי שורות. " + baseSystemPrompt;
 
-  // קבלת היסטוריה (ודא שמדובר במערך)
+  // קבלת היסטוריה (ודא שמדובר במערך) והגבלתה ל-15 ההודעות האחרונות
   const retrievedHistory = Array.isArray(data.history) ? data.history : [];
+  const limitedHistory = retrievedHistory.slice(-15); // קח את 15 ההודעות האחרונות
 
   // 7. בניית מערך ההודעות עבור Gemini API
   // 7. בניית מערך ההודעות עבור Gemini API כולל Few-shot example
   const contents = [
     { role: "user", parts: [{ text: systemPrompt }] },
     { role: "model", parts: [{ text: "Okay." }] },
-    ...retrievedHistory,
+    ...limitedHistory, // השתמש בהיסטוריה המוגבלת
     // Few-shot example
     { role: "user", parts: [{ text: "אני רוצה לבנות אתר" }] },
     { role: "model", parts: [{ text: "בטח! נבנה לך אתר תדמית יעיל. לפרטים: 055-4420446" }] },
