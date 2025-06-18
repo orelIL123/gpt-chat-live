@@ -89,26 +89,69 @@
 
 /* עיצוב הודעות */
 .message {
-    padding: 10px 15px;
-    margin: 5px 0;
-    border-radius: 15px;
+    position: relative;
+    padding: 0;
+    margin: 15px 0 15px 0;
+    border-radius: 18px;
     max-width: 80%;
-    word-wrap: break-word;
+    display: flex;
+    align-items: flex-end;
     animation: fadeIn 0.3s ease-out;
 }
 
 .user-message {
-    background-color: #007bff;
-    color: white;
-    margin-left: auto;
-    border-bottom-right-radius: 5px;
+    background: none;
+    justify-content: flex-end;
 }
 
 .bot-message {
+    background: none;
+    justify-content: flex-start;
+}
+
+.bubble-content {
+    padding: 12px 18px;
+    border-radius: 18px;
+    display: inline-block;
+    word-break: break-word;
+    font-size: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.user-message .bubble-content {
+    background-color: #25D366;
+    color: #fff;
+    border-bottom-right-radius: 5px;
+    border-bottom-left-radius: 18px;
+}
+
+.bot-message .bubble-content {
     background-color: #f1f1f1;
     color: #333;
-    margin-right: auto;
     border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 18px;
+}
+
+.bubble-tail {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    position: relative;
+    top: 0;
+}
+
+.user-tail {
+    border-width: 0 0 18px 18px;
+    border-color: transparent transparent #25D366 transparent;
+    left: 6px;
+    margin-right: -6px;
+}
+
+.bot-tail {
+    border-width: 0 18px 18px 0;
+    border-color: transparent #f1f1f1 transparent transparent;
+    right: 6px;
+    margin-left: -6px;
 }
 
 /* עיצוב אזור הקלט */

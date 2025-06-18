@@ -249,32 +249,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Append Message Function ---
   function appendMessage(role, text, save = true) {
-    // Prevent appending empty messages or messages with only whitespace
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
         console.log(`Client: Attempted to append empty or invalid message for role: ${role}. Aborting.`);
         return;
     }
-
     const msg = document.createElement("div");
-    msg.classList.add('message'); // Add base message class
+    msg.classList.add('message');
     if (role === 'user') {
-        msg.classList.add('user-message'); // Add user-specific class
+        msg.classList.add('user-message');
+        msg.innerHTML = `<span class="bubble-tail user-tail"></span><span class="bubble-content">${text}</span>`;
     } else {
-        msg.classList.add('bot-message'); // Add bot-specific class
+        msg.classList.add('bot-message');
+        msg.innerHTML = `<span class="bubble-tail bot-tail"></span><span class="bubble-content">${text}</span>`;
     }
-
-    // Convert basic markdown (like **bold**) to HTML
-    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-    msg.innerHTML = formattedText; // Use innerHTML to render HTML tags
     const chatBody = document.getElementById("vegos-chat-body");
     chatBody.appendChild(msg);
-
-    // Scroll to the bottom after the message is added and rendered
     requestAnimationFrame(() => {
         chatBody.scrollTop = chatBody.scrollHeight;
     });
-
     if (client_id && save) {
         if (leadCaptureState === 'idle' || role === 'user') {
             chatHistory.push({ role, text });
