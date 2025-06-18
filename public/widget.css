@@ -97,16 +97,24 @@
     display: flex;
     align-items: flex-end;
     animation: fadeIn 0.3s ease-out;
+    clear: both;
+    width: 100%;
 }
 
 .user-message {
     background: none;
     justify-content: flex-end;
+    margin-left: auto;
+    margin-right: 0;
+    float: right;
 }
 
 .bot-message {
     background: none;
     justify-content: flex-start;
+    margin-right: auto;
+    margin-left: 0;
+    float: left;
 }
 
 .bubble-content {
@@ -116,6 +124,8 @@
     word-break: break-word;
     font-size: 15px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    position: relative;
+    z-index: 1;
 }
 
 .user-message .bubble-content {
@@ -123,6 +133,7 @@
     color: #fff;
     border-bottom-right-radius: 5px;
     border-bottom-left-radius: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .bot-message .bubble-content {
@@ -130,6 +141,7 @@
     color: #333;
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .bubble-tail {
@@ -138,6 +150,7 @@
     border-style: solid;
     position: relative;
     top: 0;
+    z-index: 0;
 }
 
 .user-tail {
@@ -304,4 +317,22 @@
     .message-input {
         font-size: 16px;
     }
+}
+
+/* Ensure chat body has proper styling */
+#vegos-chat-body, .chat-messages {
+    padding: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+    direction: rtl;
+    min-height: 0;
+    max-height: calc(100vh - 200px);
+    background-color: #f9f9f9;
+}
+
+/* Clear floats after messages */
+.message::after {
+    content: "";
+    display: table;
+    clear: both;
 } 

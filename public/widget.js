@@ -178,10 +178,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const chatBody = document.createElement("div");
   chatBody.id = "vegos-chat-body"; // Add ID for CSS targeting
+  chatBody.className = "chat-messages"; // Add the correct class for styling
   Object.assign(chatBody.style, {
     padding: "10px",
     flexGrow: 1,
-    overflowY: "auto", direction: "rtl"
+    overflowY: "auto", 
+    direction: "rtl",
+    maxHeight: "calc(100vh - 200px)" // Ensure proper height calculation
   });
 
   const chatInputArea = document.createElement("div");
@@ -253,20 +256,83 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log(`Client: Attempted to append empty or invalid message for role: ${role}. Aborting.`);
         return;
     }
+    
     const msg = document.createElement("div");
     msg.classList.add('message');
+    
+    // Clear styling and ensure proper bubble structure
     if (role === 'user') {
         msg.classList.add('user-message');
-        msg.innerHTML = `<span class="bubble-tail user-tail"></span><span class="bubble-content">${text}</span>`;
+        msg.style.cssText = `
+            justify-content: flex-end;
+            margin-left: auto;
+            margin-right: 0;
+        `;
+        msg.innerHTML = `
+            <div class="bubble-content" style="
+                background-color: #25D366;
+                color: #fff;
+                border-bottom-right-radius: 5px;
+                border-bottom-left-radius: 18px;
+                padding: 12px 18px;
+                border-radius: 18px;
+                max-width: 80%;
+                word-break: break-word;
+                font-size: 15px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            ">${text}</div>
+            <div class="bubble-tail user-tail" style="
+                width: 0;
+                height: 0;
+                border-style: solid;
+                border-width: 0 0 18px 18px;
+                border-color: transparent transparent #25D366 transparent;
+                position: relative;
+                left: 6px;
+                margin-right: -6px;
+            "></div>
+        `;
     } else {
         msg.classList.add('bot-message');
-        msg.innerHTML = `<span class="bubble-tail bot-tail"></span><span class="bubble-content">${text}</span>`;
+        msg.style.cssText = `
+            justify-content: flex-start;
+            margin-right: auto;
+            margin-left: 0;
+        `;
+        msg.innerHTML = `
+            <div class="bubble-tail bot-tail" style="
+                width: 0;
+                height: 0;
+                border-style: solid;
+                border-width: 0 18px 18px 0;
+                border-color: transparent #f1f1f1 transparent transparent;
+                position: relative;
+                right: 6px;
+                margin-left: -6px;
+            "></div>
+            <div class="bubble-content" style="
+                background-color: #f1f1f1;
+                color: #333;
+                border-bottom-left-radius: 5px;
+                border-bottom-right-radius: 18px;
+                padding: 12px 18px;
+                border-radius: 18px;
+                max-width: 80%;
+                word-break: break-word;
+                font-size: 15px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            ">${text}</div>
+        `;
     }
+    
     const chatBody = document.getElementById("vegos-chat-body");
     chatBody.appendChild(msg);
+    
+    // Ensure proper scrolling
     requestAnimationFrame(() => {
         chatBody.scrollTop = chatBody.scrollHeight;
     });
+    
     if (client_id && save) {
         if (leadCaptureState === 'idle' || role === 'user') {
             chatHistory.push({ role, text });
@@ -298,6 +364,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (!capturedName || !capturedContact) {
+      console.error("[LEAD] Cannot send lead: missing name or contact info.");
+      appendMessage('bot', "חסרים פרטים נדרשים. אנא נסה שוב.");
+      return;
+    }
+
     const leadData = {
       name: capturedName,
       contact: capturedContact,
@@ -313,27 +385,53 @@ document.addEventListener("DOMContentLoaded", function () {
 
     try {
       console.log("[LEAD] Making POST request to:", LEAD_CAPTURE_API_URL);
+      
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(LEAD_CAPTURE_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(leadData)
+        body: JSON.stringify(leadData),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+      
       console.log("[LEAD] Server response status:", response.status);
-      const responseData = await response.json();
-      console.log("[LEAD] Server response data:", responseData);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      console.log("[LEAD] Server response headers:", Object.fromEntries(response.headers.entries()));
+      
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log("[LEAD] Server response data:", responseData);
+      } catch (parseError) {
+        console.error("[LEAD] Failed to parse JSON response:", parseError);
+        const textResponse = await response.text();
+        console.log("[LEAD] Raw response text:", textResponse);
+        throw new Error(`Invalid JSON response: ${textResponse}`);
       }
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseData?.error || 'Unknown error'}`);
+      }
+
+      console.log("[LEAD] Lead sent successfully!");
       appendMessage('bot', "תודה! קיבלנו את פרטיך ונציג ייצור קשר בהקדם.");
       resetLeadCaptureState();
     } catch (error) {
       console.error("[LEAD] Error sending lead:", error);
-      appendMessage('bot', "אירעה שגיאה בשליחת הפרטים. נסה שוב מאוחר יותר.");
+      
+      if (error.name === 'AbortError') {
+        appendMessage('bot', "אירעה שגיאה בשליחת הפרטים - חיבור איטי מדי. נסה שוב מאוחר יותר.");
+      } else if (error.message.includes('Failed to fetch')) {
+        appendMessage('bot', "אירעה שגיאה בחיבור לשרת. בדוק את החיבור לאינטרנט ונסה שוב.");
+      } else {
+        appendMessage('bot', `אירעה שגיאה בשליחת הפרטים: ${error.message}`);
+      }
     }
   }
   console.log("Client: After sendLeadViaFetch function definition."); // Added log
