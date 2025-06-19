@@ -235,18 +235,37 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.appendChild(chatWindow);
   console.log("Client: After appending chat elements."); // Added log
 
-  // --- Load Chat History ---
+  // --- Load History with Expiry ---
   function loadHistory() {
-    if (!client_id) return;
-    const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
-    if (savedHistory) {
-      try {
-        chatHistory = JSON.parse(savedHistory);
-        chatHistory.forEach(msg => appendMessage(msg.role, msg.text, false));
-      } catch (e) {
-        console.error("Error parsing chat history:", e);
-        localStorage.removeItem(CHAT_HISTORY_KEY);
+    try {
+      const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Check for timestamp
+        const lastTimestamp = localStorage.getItem(CHAT_HISTORY_KEY + '_ts');
+        const now = Date.now();
+        const THREE_HOURS = 3 * 60 * 60 * 1000;
+        if (lastTimestamp && now - parseInt(lastTimestamp, 10) > THREE_HOURS) {
+          // More than 3 hours passed, clear history
+          localStorage.removeItem(CHAT_HISTORY_KEY);
+          localStorage.removeItem(CHAT_HISTORY_KEY + '_ts');
+          chatHistory = [];
+        } else {
+          chatHistory = Array.isArray(parsed) ? parsed : [];
+        }
       }
+    } catch (e) {
+      chatHistory = [];
+    }
+  }
+
+  // --- Save History with Timestamp ---
+  function saveHistory() {
+    try {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+      localStorage.setItem(CHAT_HISTORY_KEY + '_ts', Date.now().toString());
+    } catch (e) {
+      // Ignore errors
     }
   }
 
@@ -340,11 +359,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (chatHistory.length > MAX_HISTORY_LENGTH) {
                 chatHistory = chatHistory.slice(chatHistory.length - MAX_HISTORY_LENGTH);
             }
-            try {
-                localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
-            } catch (e) {
-                console.error("Error saving chat history:", e);
-            }
+            saveHistory();
         }
     }
     return msg;
