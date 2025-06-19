@@ -469,21 +469,28 @@ document.addEventListener("DOMContentLoaded", function () {
         if (containsAny(lowerInput, ['נציג', 'אנושי', 'אדם', 'human', 'agent'])) {
              console.log("Client: User reiterated wanting human assistance during lead capture.");
              appendMessage('bot', 'הבנתי, אשמח לחבר אותך לנציג. אנא המתן.');
-             // Consider resetting state or waiting for human here
+             resetLeadCaptureState();
              return;
         }
     }
 
-    // Process input based on the current lead capture state
+    // Always ask for name first, even if user tries to provide contact info
     if (leadCaptureState === 'askingName') {
+        // If user tries to give contact info instead of name
+        const emailRegex = /.+@.+\..+/;
+        const phoneRegex = /^[\d\s\-\(\)]+$/;
+        if (emailRegex.test(userInput.trim()) || phoneRegex.test(userInput.trim())) {
+            appendMessage('bot', 'נראה שנתת מספר טלפון או אימייל במקום שם. אשמח לשמוע קודם את שמך המלא.');
+            return;
+        }
         // Basic validation: Check if input is not too short or just whitespace
-        if (userInput.trim().length > 1) {
+        if (userInput.trim().length > 1 && !/^[0-9]+$/.test(userInput.trim())) {
             capturedName = userInput.trim();
             leadCaptureState = 'askingContact';
             appendMessage('bot', 'תודה! אשמח לקבל מספר טלפון או כתובת אימייל ליצירת קשר.');
         } else {
             // Clarify that we are asking for the name
-            appendMessage('bot', 'נראה שזו לא תשובה תקינה לשם. אנא הקלד את שמך המלא.');
+            appendMessage('bot', 'נראה שזו לא תשובה תקינה לשם. אנא הקלד את שמך המלא (לפחות 2 תווים, לא מספרים בלבד).');
         }
         return; // Stop processing after handling name input
     }
@@ -492,6 +499,12 @@ document.addEventListener("DOMContentLoaded", function () {
         // Basic validation: Check if input looks like an email or phone number
         const emailRegex = /.+@.+\..+/;
         const phoneRegex = /^[\d\s\-\(\)]+$/; // Simple regex for digits, spaces, hyphens, parentheses
+
+        // If user tries to give name again
+        if (userInput.trim().length > 1 && !emailRegex.test(userInput.trim()) && !phoneRegex.test(userInput.trim()) && !/^[0-9]+$/.test(userInput.trim())) {
+            appendMessage('bot', 'כבר קיבלתי את שמך. עכשיו אשמח לקבל מספר טלפון או אימייל ליצירת קשר.');
+            return;
+        }
 
         if (emailRegex.test(userInput.trim()) || phoneRegex.test(userInput.trim())) {
             capturedContact = userInput.trim();
@@ -544,8 +557,6 @@ document.addEventListener("DOMContentLoaded", function () {
           appendMessage('bot', data.reply);
       } else {
           console.warn("Client: Received empty or invalid reply from API in handleLeadCaptureStep.", data);
-          // Optionally append a generic error message if the reply is empty
-          // appendMessage('bot', 'מצטער, לא קיבלתי תשובה מהשרת.');
       }
       
       // Check if lead capture should be triggered from the response

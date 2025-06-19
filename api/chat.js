@@ -149,18 +149,47 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
 
   const lowerMessage = message.toLowerCase();
 
-  // בדיקות ישירות יותר - Keep these as they are explicit user requests
-  const directTriggers = [
+  // טריגרים חזקים בלבד
+  const strongDirectTriggers = [
     'שאיר פרטים', 'השאר פרטים', 'רוצה פרטים',
     'אשמח לפרטים', 'אשמח לקבל פרטים', 'תתקשרו אלי',
     'רוצה שתתקשרו', 'בוא נדבר', 'אני מעוניין',
+    'נציג', 'אנושי', 'אדם', 'human', 'agent'
+  ];
+
+  // טריגרים כלליים (כן, בסדר וכו')
+  const genericAffirmatives = [
     'כן', 'בסדר', 'אוקיי', 'ok', 'נשמע טוב'
   ];
 
-  // בדיקה לטריגרים ישירים
-  if (directTriggers.some(trigger => lowerMessage.includes(trigger))) {
-    console.log("[CHAT] Lead capture triggered: Direct trigger found");
+  // בדיקה לטריגרים חזקים
+  if (strongDirectTriggers.some(trigger => lowerMessage.includes(trigger))) {
+    console.log("[CHAT] Lead capture triggered: Strong direct trigger found");
     return true;
+  }
+
+  // בדיקה לטריגרים כלליים - רק אם ההודעה הקודמת של הבוט הייתה הצעה מפורשת
+  if (genericAffirmatives.some(trigger => lowerMessage === trigger)) {
+    if (history && history.length > 0) {
+      const lastMessage = history[history.length - 1];
+      if (lastMessage.role === 'assistant' && lastMessage.content) {
+        const lastModelText = lastMessage.content.toLowerCase();
+        const aiOfferTriggers = [
+          'אשמח לחבר אותך עם נציג',
+          'האם זה מתאים לך',
+          'אשמח לקבל פרטים',
+          'רוצה שנציג יצור איתך קשר',
+          'תרצה שאחבר אותך לנציג',
+          'תרצה שנציג יחזור אליך',
+          'רוצה שנחזור אליך',
+          'רוצה שנציג יצור קשר'
+        ];
+        if (aiOfferTriggers.some(trigger => lastModelText.includes(trigger))) {
+          console.log("[CHAT] Lead capture triggered: Generic affirmative after explicit offer");
+          return true;
+        }
+      }
+    }
   }
 
   // בדיקה לכוונת עזרה אנושית - Require higher confidence for this to trigger lead capture directly
@@ -180,17 +209,18 @@ function shouldTriggerLeadCapture(message, intent, confidence, history) {
   // בדיקת הקשר מההיסטוריה - Keep this logic
   if (history && history.length > 0) {
     const lastMessage = history[history.length - 1];
-    if (lastMessage.role === 'assistant' && lastMessage.content) { // Changed role to assistant for OpenAI format
-      const lastModelText = lastMessage.content.toLowerCase(); // Changed parts[0].text to content
-
+    if (lastMessage.role === 'assistant' && lastMessage.content) {
+      const lastModelText = lastMessage.content.toLowerCase();
       const aiOfferTriggers = [
         'אשמח לחבר אותך עם נציג',
         'האם זה מתאים לך',
         'אשמח לקבל פרטים',
         'רוצה שנציג יצור איתך קשר',
-        'תרצה שאחבר אותך לנציג'
+        'תרצה שאחבר אותך לנציג',
+        'תרצה שנציג יחזור אליך',
+        'רוצה שנחזור אליך',
+        'רוצה שנציג יצור קשר'
       ];
-
       if (aiOfferTriggers.some(trigger => lastModelText.includes(trigger))) {
         console.log("[CHAT] Lead capture triggered: AI offered assistance and user responded");
         return true;
@@ -262,11 +292,12 @@ async function generateChatResponse(message, clientId, history) {
   ];
 
   // 8. קריאה ל-OpenAI API
-  console.log(`[CHAT] Calling OpenAI for client_id: ${clientId} with ${messages.length} messages.`);
+  const maxTokens = typeof data.max_tokens_per_reply === 'number' ? data.max_tokens_per_reply : 80;
+  console.log(`[CHAT] Calling OpenAI for client_id: ${clientId} with ${messages.length} messages. max_tokens: ${maxTokens}`);
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini", // או מודל אחר שתבחר
     messages: messages,
-    max_tokens: 80, // הגבלת טוקנים
+    max_tokens: maxTokens, // הגבלת טוקנים דינמית
     temperature: 0.3, // שליטה על יצירתיות
   });
 
