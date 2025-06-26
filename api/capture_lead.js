@@ -197,11 +197,15 @@ async function sendLeadNotification(leadData) {
       const clientDoc = await clientDocRef.get();
       if (clientDoc.exists) {
         const clientData = clientDoc.data();
-        if (clientData.admin_email && typeof clientData.admin_email === 'string' && clientData.admin_email.trim().length > 0) {
+        // בדוק קודם leadTargetEmail, אם לא קיים עבור ל-admin_email
+        if (clientData.leadTargetEmail && typeof clientData.leadTargetEmail === 'string' && clientData.leadTargetEmail.trim().length > 0) {
+          recipientEmail = clientData.leadTargetEmail.trim();
+          console.log(`[CAPTURE_LEAD] Using client-specific leadTargetEmail from Firestore: ${recipientEmail}`);
+        } else if (clientData.admin_email && typeof clientData.admin_email === 'string' && clientData.admin_email.trim().length > 0) {
           recipientEmail = clientData.admin_email.trim();
-          console.log(`[CAPTURE_LEAD] Using client-specific admin email from Firestore: ${recipientEmail}`);
+          console.log(`[CAPTURE_LEAD] Using client-specific admin_email from Firestore: ${recipientEmail}`);
         } else {
-          console.log(`[CAPTURE_LEAD] Client document found for ${leadData.client_id}, but no valid admin_email field. Using default/env email.`);
+          console.log(`[CAPTURE_LEAD] Client document found for ${leadData.client_id}, but no valid leadTargetEmail/admin_email field. Using default/env email.`);
         }
       } else {
         console.log(`[CAPTURE_LEAD] Client document not found for ${leadData.client_id}. Using default/env email.`);
