@@ -45,12 +45,19 @@ module.exports = async (req, res) => {
 
     const data = doc.data();
 
-    // Extract relevant configuration fields
+    // Extract relevant configuration fields, including potential color settings
     const clientConfig = {
       client_id: clientId,
       system_prompt: data.system_prompt || "אתה עוזר כללי ועונה בעברית בצורה נעימה.", // Default system prompt
       welcome_message: data.welcome_message || "היי אני vegos העוזר החכם שלך לכל מה שתצטרך",
-      onboarding_questions: data.onboarding_questions || [] // שאלות התחלתיות
+      onboarding_questions: data.onboarding_questions || [], // שאלות התחלתיות
+      // Add color configuration fields
+      widgetPrimaryColor: data.widgetPrimaryColor || null,
+      widgetSecondaryColor: data.widgetSecondaryColor || null,
+      buttonColor: data.buttonColor || null,
+      headerColor: data.headerColor || null,
+      userMessageColor: data.userMessageColor || null,
+      botMessageColor: data.botMessageColor || null
       // Add other configurable fields here in the future
     };
 

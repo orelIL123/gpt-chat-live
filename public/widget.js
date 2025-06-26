@@ -6,7 +6,7 @@ fontStylesheet.rel = 'stylesheet';
 fontStylesheet.href = 'https://gpt-chat-live.vercel.app/fonts.css';
 document.head.appendChild(fontStylesheet);
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () { // Added async
   console.log("Chat Widget: DOM Content Loaded");
   // --- Get Client + API from <script data-*> ---
   const scriptTag = document.currentScript || document.querySelector('script[data-client-id]');
@@ -15,18 +15,18 @@ document.addEventListener("DOMContentLoaded", function () {
   console.log('Chat Widget: Client ID extracted:', client_id);
   let baseUrl = scriptTag?.dataset?.apiUrl || scriptTag.src.split('/').slice(0,-1).join('/');
   console.log('Chat Widget: Base URL before fix:', baseUrl);
-  
+
   // Fix if data-api-url includes the full path
   if (baseUrl && baseUrl.endsWith('/api/chat')) {
     baseUrl = baseUrl.replace('/api/chat', '');
     console.log('Chat Widget: Base URL after fix:', baseUrl);
   }
-  
+
   if (!client_id) {
     console.error('Chat-Widget ❌ client_id missing in <script>');
     return;
   }
-  
+
   console.log('Chat Widget: Final config - client_id:', client_id, 'baseUrl:', baseUrl);
 
   const API_URL = `${baseUrl}/api/chat`;
@@ -50,6 +50,18 @@ document.addEventListener("DOMContentLoaded", function () {
   let onboardingQuestions = [];
   let onboardingStep = 0;
   let onboardingActive = false;
+
+  // Default colors
+  const defaultColors = {
+    widgetPrimaryColor: '#25D366', // Default for header, user bubble, send button
+    widgetSecondaryColor: '#f9f9f9', // Default for chat window background
+    buttonColor: '#25D366', // Default for send button
+    headerColor: '#25D366', // Default for header background
+    userMessageColor: '#25D366', // Default for user bubble background
+    botMessageColor: '#f1f1f1' // Default for bot bubble background
+  };
+
+  let clientConfig = {}; // Variable to hold fetched config
 
   // --- CSS Injection for Pulse Animation ---
   const styleSheet = document.createElement("style");
@@ -78,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
         -webkit-transform: none !important;
         zoom: 1 !important;
       }
-      
+
       #vegos-chat-button {
         left: 10px !important;
         right: auto !important;
@@ -89,11 +101,11 @@ document.addEventListener("DOMContentLoaded", function () {
         -webkit-transform: none !important;
         zoom: 1 !important;
       }
-      
+
       #vegos-chat-body {
         max-height: calc(70vh - 125px) !important;
       }
-      
+
       /* Fix input on mobile */
       #vegos-chat-input {
         font-size: 16px !important; /* Prevents zoom on iOS */
@@ -106,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const chatButton = document.createElement("div");
   chatButton.id = 'vegos-chat-button'; // Add ID for CSS targeting
   const logoImg = document.createElement("img");
-  logoImg.src = client_id ? 
+  logoImg.src = client_id ?
     `https://gpt-chat-live.vercel.app/logo/${client_id}.png` :
     `https://gpt-chat-live.vercel.app/logo/default.png`;
   logoImg.onerror = function() {
@@ -140,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
     width: "350px",
     maxHeight: "calc(100vh - 120px)",
     borderRadius: "10px",
-    backgroundColor: "#f9f9f9",
+    // backgroundColor will be set by applyClientColors
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
     zIndex: "1000", display: "none", flexDirection: "column", overflow: "hidden",
     padding: "20px",
@@ -150,8 +162,10 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const chatHeader = document.createElement("div");
+  chatHeader.id = 'vegos-chat-header'; // Added ID
   Object.assign(chatHeader.style, {
-    backgroundColor: "#25D366", color: "white", padding: "10px", // Consider making colors configurable
+    // backgroundColor and color will be set by applyClientColors
+    padding: "10px", // Consider making colors configurable
     fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center"
   });
 
@@ -182,7 +196,7 @@ document.addEventListener("DOMContentLoaded", function () {
   Object.assign(chatBody.style, {
     padding: "10px",
     flexGrow: 1,
-    overflowY: "auto", 
+    overflowY: "auto",
     direction: "rtl",
     maxHeight: "calc(100vh - 200px)" // Ensure proper height calculation
   });
@@ -206,7 +220,8 @@ document.addEventListener("DOMContentLoaded", function () {
   sendButton.id = "send-message"; // Add ID for event listener
   sendButton.textContent = "שלח"; // Consider making text configurable
   Object.assign(sendButton.style, {
-    backgroundColor: "#25D366", color: "white", border: "none", // Consider making colors configurable
+    // backgroundColor and color will be set by applyClientColors
+    border: "none", // Consider making colors configurable
     borderRadius: "4px", padding: "8px 15px", cursor: "pointer",
     minWidth: "60px", // Ensure minimum width for better touch targets
     touchAction: "manipulation" // Improve touch handling
@@ -234,6 +249,51 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.appendChild(chatButton);
   document.body.appendChild(chatWindow);
   console.log("Client: After appending chat elements."); // Added log
+
+  // Function to apply fetched client colors
+  function applyClientColors() {
+    const colors = { ...defaultColors, ...clientConfig }; // Merge defaults with fetched config
+
+    // Apply colors to elements
+    const chatWindowElement = document.getElementById('vegos-chat-window');
+    if (chatWindowElement) {
+      chatWindowElement.style.backgroundColor = colors.widgetSecondaryColor;
+    }
+
+    const chatHeaderElement = document.getElementById('vegos-chat-header');
+    if (chatHeaderElement) {
+      chatHeaderElement.style.backgroundColor = colors.headerColor;
+      chatHeaderElement.style.color = '#fff'; // Keep header text white for now
+    }
+
+    const sendButtonElement = document.getElementById('send-message');
+    if (sendButtonElement) {
+      sendButtonElement.style.backgroundColor = colors.buttonColor;
+      sendButtonElement.style.color = '#fff'; // Keep button text white for now
+    }
+
+    // Message bubble colors are applied in appendMessage
+  }
+
+  // Fetch client configuration and apply colors
+  if (client_id) {
+    try {
+      const config = await fetchClientConfig(); // Call the async function
+      if (config) {
+        clientConfig = config;
+        console.log("Client: Fetched client config:", clientConfig);
+      } else {
+        console.warn("Client: Failed to fetch client config, using defaults.");
+      }
+    } catch (error) {
+      console.error("Client: Error fetching client config:", error);
+    }
+  } else {
+    console.warn("Client: client_id missing, cannot fetch client config. Using defaults.");
+  }
+
+  // Apply colors after fetching config (or immediately if no client_id)
+  applyClientColors();
 
   // --- Load History with Expiry ---
   function loadHistory() {
@@ -268,85 +328,89 @@ document.addEventListener("DOMContentLoaded", function () {
       // Ignore errors
     }
   }
+// --- Append Message Function ---
+function appendMessage(role, text, save = true) {
+  if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      console.log(`Client: Attempted to append empty or invalid message for role: ${role}. Aborting.`);
+      return;
+  }
 
-  // --- Append Message Function ---
-  function appendMessage(role, text, save = true) {
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        console.log(`Client: Attempted to append empty or invalid message for role: ${role}. Aborting.`);
-        return;
-    }
-    
-    const msg = document.createElement("div");
-    msg.classList.add('message');
-    
-    // Clear styling and ensure proper bubble structure
-    if (role === 'user') {
-        msg.classList.add('user-message');
-        msg.style.cssText = `
-            justify-content: flex-end;
-            margin-left: auto;
-            margin-right: 0;
-        `;
-        msg.innerHTML = `
-            <div class="bubble-content" style="
-                background-color: #25D366;
-                color: #fff;
-                border-bottom-right-radius: 5px;
-                border-bottom-left-radius: 18px;
-                padding: 12px 18px;
-                border-radius: 18px;
-                max-width: 80%;
-                word-break: break-word;
-                font-size: 15px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            ">${text}</div>
-            <div class="bubble-tail user-tail" style="
-                width: 0;
-                height: 0;
-                border-style: solid;
-                border-width: 0 0 18px 18px;
-                border-color: transparent transparent #25D366 transparent;
-                position: relative;
-                left: 6px;
-                margin-right: -6px;
-            "></div>
-        `;
-    } else {
-        msg.classList.add('bot-message');
-        msg.style.cssText = `
-            justify-content: flex-start;
-            margin-right: auto;
-            margin-left: 0;
-        `;
-        msg.innerHTML = `
-            <div class="bubble-tail bot-tail" style="
-                width: 0;
-                height: 0;
-                border-style: solid;
-                border-width: 0 18px 18px 0;
-                border-color: transparent #f1f1f1 transparent transparent;
-                position: relative;
-                right: 6px;
-                margin-left: -6px;
-            "></div>
-            <div class="bubble-content" style="
-                background-color: #f1f1f1;
-                color: #333;
-                border-bottom-left-radius: 5px;
-                border-bottom-right-radius: 18px;
-                padding: 12px 18px;
-                border-radius: 18px;
-                max-width: 80%;
-                word-break: break-word;
-                font-size: 15px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            ">${text}</div>
-        `;
-    }
-    
-    const chatBody = document.getElementById("vegos-chat-body");
-    chatBody.appendChild(msg);
-    
+  const msg = document.createElement("div");
+  msg.classList.add('message');
+
+  // Use fetched colors or defaults
+  const userBubbleColor = clientConfig.userMessageColor || defaultColors.userMessageColor;
+  const botBubbleColor = clientConfig.botMessageColor || defaultColors.botMessageColor;
+
+  // Clear styling and ensure proper bubble structure
+  if (role === 'user') {
+      msg.classList.add('user-message');
+      msg.style.cssText = `
+          justify-content: flex-end;
+          margin-left: auto;
+          margin-right: 0;
+      `;
+      msg.innerHTML = `
+          <div class="bubble-content" style="
+              background-color: ${userBubbleColor};
+              color: #fff; /* Keep text white for user messages */
+              border-bottom-right-radius: 5px;
+              border-bottom-left-radius: 18px;
+              padding: 12px 18px;
+              border-radius: 18px;
+              max-width: 80%;
+              word-break: break-word;
+              font-size: 15px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          ">${text}</div>
+          <div class="bubble-tail user-tail" style="
+              width: 0;
+              height: 0;
+              border-style: solid;
+              border-width: 0 0 18px 18px;
+              border-color: transparent transparent ${userBubbleColor} transparent;
+              position: relative;
+              left: 6px;
+              margin-right: -6px;
+          "></div>
+      `;
+  } else {
+      msg.classList.add('bot-message');
+      msg.style.cssText = `
+          justify-content: flex-start;
+          margin-right: auto;
+          margin-left: 0;
+      `;
+      msg.innerHTML = `
+          <div class="bubble-tail bot-tail" style="
+              width: 0;
+              height: 0;
+              border-style: solid;
+              border-width: 0 18px 18px 0;
+              border-color: transparent ${botBubbleColor} transparent transparent;
+              position: relative;
+              right: 6px;
+              margin-left: -6px;
+          "></div>
+          <div class="bubble-content" style="
+              background-color: ${botBubbleColor};
+              color: #333; /* Keep text dark for bot messages */
+              border-bottom-left-radius: 5px;
+              border-bottom-right-radius: 18px;
+              padding: 12px 18px;
+              border-radius: 18px;
+              max-width: 80%;
+              word-break: break-word;
+              font-size: 15px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          ">${text}</div>
+      `;
+  }
+
+  const chatBody = document.getElementById("vegos-chat-body");
+  chatBody.appendChild(msg);
+
+
     // Ensure proper scrolling
     requestAnimationFrame(() => {
         chatBody.scrollTop = chatBody.scrollHeight;
