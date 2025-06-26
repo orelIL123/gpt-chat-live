@@ -250,32 +250,39 @@ document.addEventListener("DOMContentLoaded", async function () { // Added async
   document.body.appendChild(chatWindow);
   console.log("Client: After appending chat elements."); // Added log
 
-  // Function to apply fetched client colors
-  function applyClientColors() {
-    const colors = { ...defaultColors, ...clientConfig }; // Merge defaults with fetched config
+  // Function to apply fetched client configuration (colors and size)
+  function applyClientConfig() {
+    const config = { ...defaultColors, ...clientConfig }; // Merge defaults with fetched config
 
     // Apply colors to elements
     const chatWindowElement = document.getElementById('vegos-chat-window');
     if (chatWindowElement) {
-      chatWindowElement.style.backgroundColor = colors.widgetSecondaryColor;
+      chatWindowElement.style.backgroundColor = config.widgetSecondaryColor;
+      // Apply size if provided
+      if (config.widgetWidth) {
+        chatWindowElement.style.width = config.widgetWidth;
+      }
+      if (config.widgetHeight) {
+        chatWindowElement.style.maxHeight = config.widgetHeight;
+      }
     }
 
     const chatHeaderElement = document.getElementById('vegos-chat-header');
     if (chatHeaderElement) {
-      chatHeaderElement.style.backgroundColor = colors.headerColor;
+      chatHeaderElement.style.backgroundColor = config.headerColor;
       chatHeaderElement.style.color = '#fff'; // Keep header text white for now
     }
 
     const sendButtonElement = document.getElementById('send-message');
     if (sendButtonElement) {
-      sendButtonElement.style.backgroundColor = colors.buttonColor;
+      sendButtonElement.style.backgroundColor = config.buttonColor;
       sendButtonElement.style.color = '#fff'; // Keep button text white for now
     }
 
     // Message bubble colors are applied in appendMessage
   }
 
-  // Fetch client configuration and apply colors
+  // Fetch client configuration and apply settings
   if (client_id) {
     try {
       const config = await fetchClientConfig(); // Call the async function
@@ -292,8 +299,8 @@ document.addEventListener("DOMContentLoaded", async function () { // Added async
     console.warn("Client: client_id missing, cannot fetch client config. Using defaults.");
   }
 
-  // Apply colors after fetching config (or immediately if no client_id)
-  applyClientColors();
+  // Apply configuration after fetching (or immediately if no client_id)
+  applyClientConfig();
 
   // --- Load History with Expiry ---
   function loadHistory() {

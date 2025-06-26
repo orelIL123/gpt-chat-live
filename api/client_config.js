@@ -57,7 +57,10 @@ module.exports = async (req, res) => {
       buttonColor: data.buttonColor || null,
       headerColor: data.headerColor || null,
       userMessageColor: data.userMessageColor || null,
-      botMessageColor: data.botMessageColor || null
+      botMessageColor: data.botMessageColor || null,
+      // Add size configuration fields
+      widgetWidth: data.widgetWidth || null,
+      widgetHeight: data.widgetHeight || null
       // Add other configurable fields here in the future
     };
 
